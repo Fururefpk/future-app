@@ -1,0 +1,98 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.test
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
+*.tgz
+
+# OS
+Thumbs.db
+.DS_Store
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.cer
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDE settings
+.vscode/settings.json
+.idea/workspace.xml
+
+# Local mongo database
+.mongorc.js
+
+# PM2
+ecosystem.config.js
+
+# Parcel-related files
+dist/
+.cache/
+
+# Next.js
+.next/
+out/
+
+# Testing
+test-results/
+junit.xml
+
+# API documentation
+api-docs/
+openapi.yaml
+
+# Backup files
+*.backup
+*.bak
+
+# OS specific
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
