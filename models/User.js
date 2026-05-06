@@ -78,6 +78,8 @@ const userSchema = new mongoose.Schema({
   },
   emailVerificationToken: String,
   emailVerificationExpires: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date,
   
   // Security
   loginAttempts: {

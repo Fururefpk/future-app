@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Future Property Holdings | Smart Rental Management Platform</title>
 <meta name="description" content="Future Property Holdings – Ghana's most trusted property listing and rent management platform for landlords, tenants, and administrators in Accra and Kumasi.">
+<meta name="keywords" content="Ghana property, rental management, Accra apartments, Kumasi housing, landlord, tenant portal, biometric verification">
+<meta name="author" content="Future Property Holdings">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://futurepropertyholdings.vercel.app/">
+<meta property="og:title" content="Future Property Holdings | Smart Rental Management">
+<meta property="og:description" content="Ghana's most trusted property listing and rent management platform.">
+<meta property="og:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=630&fit=crop">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Future Property Holdings | Smart Rental Management">
+<meta name="twitter:description" content="Ghana's most trusted property listing and rent management platform.">
+<meta name="twitter:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=630&fit=crop">
+
+<link rel="canonical" href="https://futurepropertyholdings.vercel.app/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -486,7 +504,7 @@
       <button class="btn btn-outline" onclick="openModal('login')">Login</button>
       <button class="btn btn-primary" onclick="openModal('register')">Get Started</button>
     </div>
-    <button class="hamburger" onclick="toggleMobileMenu()">
+    <button class="hamburger" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -1278,14 +1296,14 @@
                 
         
 <!-- ████████ CHATBOT ████████ -->
-<button class="chatbot-btn" onclick="toggleChat()" title="Chat with us">
+<button class="chatbot-btn" onclick="toggleChat()" title="Chat with us" aria-label="Open chat assistant">
   <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
 </button>
 <div class="chatbot-window" id="chat-window">
   <div class="cw-header">
     <div class="cw-avatar"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
     <div class="cw-info"><div class="cw-name">FPH Assistant</div><div class="cw-status">● Online · Replies instantly</div></div>
-    <button class="cw-close" onclick="toggleChat()"><svg viewBox="0 0 20 20" fill="currentColor" width="20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
+    <button class="cw-close" onclick="toggleChat()" aria-label="Close chat"><svg viewBox="0 0 20 20" fill="currentColor" width="20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
   </div>
   <div class="cw-messages" id="cw-msgs">
     <div class="cw-msg bot"><div class="cw-bubble">👋 Hi! I'm your FPH Assistant. I can help you find properties, list your home, or answer questions about rent management.</div></div>
@@ -1861,5 +1879,33 @@ renderBlog();
 </script>
 <!-- Backend integration: API client + auth + role-aware dashboard -->
 <script src="/app.js"></script>
+
+<!-- Cookie consent banner -->
+<div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);color:#fff;padding:16px 24px;z-index:99999;font-size:.88rem;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
+  We use essential cookies to keep you signed in. <a href="javascript:openInfoModal('cookies')" style="color:var(--sky);text-decoration:underline">Learn more</a>
+  <button onclick="acceptCookies()" style="padding:8px 20px;background:var(--blue2);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Accept</button>
+</div>
+<script>
+  (function(){
+    if(!localStorage.getItem('fph_cookies_ok')){
+      document.getElementById('cookie-banner').style.display='flex';
+    }
+  })();
+  function acceptCookies(){
+    localStorage.setItem('fph_cookies_ok','1');
+    document.getElementById('cookie-banner').style.display='none';
+  }
+</script>
+
+<!-- GA4 placeholder — replace G-XXXXXXXXXX with your real Measurement ID -->
+<!--
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
+-->
 </body>
 </html>

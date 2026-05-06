@@ -327,13 +327,13 @@
     if (!list.length) return emptyState(m, 'No tenancies yet', 'Apply to a property to start a tenancy request.');
     m.innerHTML = '<div class="dash-card"><div class="dash-h">My Tenancies</div>' +
       table(['Property', 'Rent', 'Status', 'Approval', 'Actions'], list.map(t => [
-        (t.property && t.property.name) || '\u2014',
-        'GH\u20B5' + (t.monthlyRent || 0).toLocaleString() + '/mo',
+        (t.property && t.property.name) || '—',
+        'GH₵' + (t.monthlyRent || 0).toLocaleString() + '/mo',
         pill(t.status === 'active' ? 'green' : 'gray', t.status),
         pill(t.approvalStatus === 'active' ? 'green' : t.approvalStatus === 'pending' ? 'amber' : 'red', t.approvalStatus),
         t.status !== 'ended'
           ? '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="endTenancy(\'' + t._id + '\')">End</button>'
-          : '\u2014'
+          : '—'
       ])) + '</div>';
   };
 
@@ -344,9 +344,9 @@
     m.innerHTML = '<div class="dash-card"><div class="dash-h">Rent & Invoices</div>' +
       table(['Period', 'Amount', 'Paid', 'Due', 'Status'], list.map(i => [
         i.periodLabel,
-        'GH\u20B5' + (i.amount || 0).toLocaleString(),
-        'GH\u20B5' + (i.amountPaid || 0).toLocaleString(),
-        i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '\u2014',
+        'GH₵' + (i.amount || 0).toLocaleString(),
+        'GH₵' + (i.amountPaid || 0).toLocaleString(),
+        i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '—',
         pill(i.status === 'paid' ? 'green' : i.status === 'overdue' ? 'red' : i.status === 'partial' ? 'amber' : 'blue', i.status)
       ])) + '</div>';
   };
@@ -356,7 +356,7 @@
     const list = r.data || [];
     m.innerHTML = '<div class="dash-card">' +
       '<div class="dash-h">Maintenance Requests</div>' +
-      '<div class="dash-sub">Report issues for your active rental.</div>' +
+      '<div class="dash-sub">Report issues for your active rental. Requires a verified account and active tenancy.</div>' +
       '<button class="btn btn-primary" onclick="newMaintenance()">+ New Request</button>' +
       '</div>' +
       (list.length
@@ -375,6 +375,7 @@
     const t = await api('/tenancies/me?status=active').catch(() => ({ data: [] }));
     const active = (t.data || []).filter(x => x.approvalStatus === 'active');
     if (!active.length) return showToast('You need an active tenancy to file maintenance', 'error');
+    const choices = active.map(x => (x.property && x.property.name) || x._id).join(' / ');
     const title = prompt('Issue title:'); if (!title) return;
     const description = prompt('Describe the issue:'); if (!description) return;
     try {
@@ -390,7 +391,7 @@
     if (!list.length) return emptyState(m, 'No inquiries yet', 'Use Contact Landlord on a property card to start a conversation.');
     m.innerHTML = '<div class="dash-card"><div class="dash-h">My Inquiries</div>' +
       table(['Property', 'Subject', 'Status', 'Updated'], list.map(q => [
-        (q.property && q.property.name) || '\u2014',
+        (q.property && q.property.name) || '—',
         escapeHtml(q.subject || '(no subject)'),
         pill(q.status === 'replied' ? 'green' : q.status === 'closed' ? 'gray' : 'amber', q.status),
         new Date(q.updatedAt || q.createdAt).toLocaleString()
@@ -402,15 +403,21 @@
     const me = Auth.user._id || Auth.user.id;
     const [props, t, r, x, q] = await Promise.allSettled([
       api('/properties/user/' + me, { auth: false }),
-      api('/tenancies/me'), api('/rent/me'), api('/maintenance/me'), api('/inquiries/me')
+      api('/tenancies/me'),
+      api('/rent/me'),
+      api('/maintenance/me'),
+      api('/inquiries/me')
     ]);
     const v = (s) => s.status === 'fulfilled' ? (s.value.data || []).length : 0;
     m.innerHTML =
       '<div class="dash-h" style="margin-bottom:6px">Welcome, ' + (Auth.user.firstName || 'Landlord') + '!</div>' +
       '<div class="dash-sub">Manage your properties, tenants and revenue.</div>' +
       '<div class="dash-stats">' +
-        stat(v(props), 'Listings') + stat(v(t), 'Tenancies') + stat(v(r), 'Invoices') +
-        stat(v(q), 'Inquiries') + stat(v(x), 'Maintenance') +
+        stat(v(props), 'Listings') +
+        stat(v(t), 'Tenancies') +
+        stat(v(r), 'Invoices') +
+        stat(v(q), 'Inquiries') +
+        stat(v(x), 'Maintenance') +
       '</div>';
   };
 
@@ -420,14 +427,15 @@
     const list = r.data || [];
     m.innerHTML = '<div class="dash-card">' +
       '<div class="dash-h">My Listings</div>' +
-      '<div class="dash-sub">Listings need admin approval before tenants can apply.</div>' +
+      '<div class="dash-sub">Listings need admin approval before tenants can apply. Verify your face & Ghana Card to unlock listing creation.</div>' +
       '<button class="btn btn-primary" onclick="newListing()">+ Add Property</button>' +
       '</div>' +
       (list.length
         ? '<div class="dash-card">' +
           table(['Name', 'City', 'Price', 'Status', 'Available'], list.map(p => [
-            escapeHtml(p.name), p.city,
-            'GH\u20B5' + (p.price || 0).toLocaleString(),
+            escapeHtml(p.name),
+            p.city,
+            'GH₵' + (p.price || 0).toLocaleString(),
             pill(p.verificationStatus === 'approved' ? 'green' : p.verificationStatus === 'pending' ? 'amber' : 'red', p.verificationStatus),
             p.isAvailable ? pill('green', 'Yes') : pill('gray', 'No')
           ])) + '</div>'
@@ -438,14 +446,14 @@
     const name = prompt('Property name (e.g. 3-Bed Executive Apartment):'); if (!name) return;
     const address = prompt('Address:'); if (!address) return;
     const city = prompt('City (Accra, Kumasi, Tema, ...):', 'Accra'); if (!city) return;
-    const price = Number(prompt('Monthly rent in GH\u20B5 (number):'));
+    const price = Number(prompt('Monthly rent in GH₵ (number):'));
     if (!price || price <= 0) return showToast('Invalid price', 'error');
     const propertyType = prompt('Type (apartment / house / studio / office / commercial):', 'apartment') || 'apartment';
     const rooms = Number(prompt('Number of rooms:', '2')) || 1;
     const bathrooms = Number(prompt('Number of bathrooms:', '1')) || 1;
     try {
       await api('/properties', { method: 'POST', body: { name, address, city, price, propertyType, rooms, bathrooms } });
-      showToast('Listing created \u2014 pending admin approval', 'success');
+      showToast('Listing created — pending admin approval', 'success');
       renderDashTab('listings');
     } catch (e) { showToast(e.message, 'error'); }
   }
@@ -456,16 +464,16 @@
     if (!list.length) return emptyState(m, 'No tenancies yet', 'When tenants apply to your listings, requests will appear here.');
     m.innerHTML = '<div class="dash-card"><div class="dash-h">Tenancy Requests</div>' +
       table(['Tenant', 'Property', 'Rent', 'Approval', 'Actions'], list.map(t => [
-        ((t.tenant && (t.tenant.firstName + ' ' + t.tenant.lastName)) || '\u2014'),
-        (t.property && t.property.name) || '\u2014',
-        'GH\u20B5' + (t.monthlyRent || 0).toLocaleString(),
+        ((t.tenant && (t.tenant.firstName + ' ' + t.tenant.lastName)) || '—'),
+        (t.property && t.property.name) || '—',
+        'GH₵' + (t.monthlyRent || 0).toLocaleString(),
         pill(t.approvalStatus === 'active' ? 'green' : t.approvalStatus === 'pending' ? 'amber' : 'red', t.approvalStatus),
         t.approvalStatus === 'pending'
           ? '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="decideTenancy(\'' + t._id + '\',\'active\')">Approve</button> ' +
             '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="decideTenancy(\'' + t._id + '\',\'rejected\')">Reject</button>'
           : t.status !== 'ended'
             ? '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="generateInvoice(\'' + t._id + '\')">Invoice</button>'
-            : '\u2014'
+            : '—'
       ])) + '</div>';
   };
 
@@ -504,7 +512,8 @@
       '<div class="dash-h" style="margin-bottom:6px">Admin Dashboard</div>' +
       '<div class="dash-sub">Platform-wide statistics.</div>' +
       '<div class="dash-stats">' +
-        stat(d.users || 0, 'Total Users') + stat(d.tenants || 0, 'Tenants') +
+        stat(d.users || 0, 'Total Users') +
+        stat(d.tenants || 0, 'Tenants') +
         stat(d.landlords || 0, 'Landlords') +
         stat((d.properties && d.properties.total) || 0, 'Properties') +
         stat((d.properties && d.properties.pending) || 0, 'Pending Review') +
@@ -521,8 +530,9 @@
     m.innerHTML = '<div class="dash-card"><div class="dash-h">Pending Properties</div>' +
       table(['Name', 'Landlord', 'City', 'Price', 'Actions'], list.map(p => [
         escapeHtml(p.name),
-        ((p.landlord && (p.landlord.firstName + ' ' + p.landlord.lastName)) || '\u2014'),
-        p.city, 'GH\u20B5' + (p.price || 0).toLocaleString(),
+        ((p.landlord && (p.landlord.firstName + ' ' + p.landlord.lastName)) || '—'),
+        p.city,
+        'GH₵' + (p.price || 0).toLocaleString(),
         '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="reviewProp(\'' + p._id + '\',\'approved\')">Approve</button> ' +
         '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="reviewProp(\'' + p._id + '\',\'rejected\')">Reject</button>'
       ])) + '</div>';
@@ -533,7 +543,9 @@
     const list = r.data || [];
     m.innerHTML = '<div class="dash-card"><div class="dash-h">Users</div>' +
       table(['Name', 'Email', 'Role', 'Verified', 'Active', 'Actions'], list.map(u => [
-        (u.firstName || '') + ' ' + (u.lastName || ''), u.email, u.role,
+        (u.firstName || '') + ' ' + (u.lastName || ''),
+        u.email,
+        u.role,
         (u.biometric && u.biometric.faceEnrolled && u.biometric.ghanaCardVerified) ? pill('green', 'Yes') : pill('amber', 'No'),
         u.isActive ? pill('green', 'Active') : pill('gray', 'Disabled'),
         '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="toggleUser(\'' + u._id + '\',' + (!u.isActive) + ')">' + (u.isActive ? 'Disable' : 'Enable') + '</button>'
@@ -564,7 +576,7 @@
     return '<table class="dash-table"><thead><tr>' +
       cols.map(c => '<th>' + c + '</th>').join('') +
       '</tr></thead><tbody>' +
-      rows.map(r => '<tr>' + r.map(c => '<td>' + (c == null ? '\u2014' : c) + '</td>').join('') + '</tr>').join('') +
+      rows.map(r => '<tr>' + r.map(c => '<td>' + (c == null ? '—' : c) + '</td>').join('') + '</tr>').join('') +
       '</tbody></table>';
   }
   function pill(color, text) {
@@ -588,9 +600,10 @@
       openModal('login');
       return showToast('Please sign in to apply', 'error');
     }
+    // Local demo properties have numeric IDs; Mongo properties have 24-char hex strings
     if (typeof idOrMongo !== 'string' || idOrMongo.length !== 24) {
       if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      return showToast('Demo property \u2014 connect to a live listing to apply', 'success');
+      return showToast('Demo property — connect to a live listing to apply', 'success');
     }
     try {
       await api('/tenancies', { method: 'POST', body: { propertyId: idOrMongo } });
@@ -606,6 +619,7 @@
       return showToast('Please sign in to contact the landlord', 'error');
     }
     if (typeof idOrMongo !== 'string' || idOrMongo.length !== 24) {
+      // Fall back to the legacy contact-form behaviour for demo cards
       if (typeof closePropertyDetail === 'function') closePropertyDetail();
       showPage('contact');
       return;
@@ -619,16 +633,16 @@
     } catch (e) { showToast(e.message, 'error'); }
   }
 
-  // ── LIVE PROPERTIES ─────────────────────────────────────────────────────────
+  // ── LIVE PROPERTIES (replaces demo grid on /properties when API has data) ───
   async function loadLiveProperties() {
     try {
       const r = await api('/properties?limit=24', { auth: false });
       const list = r.data || [];
-      if (!list.length) return;
+      if (!list.length) return; // keep demo cards
       const grid = document.getElementById('props-grid-2');
       if (!grid) return;
       grid.innerHTML = list.map(p => livePropCard(p)).join('');
-    } catch (_) { /* backend offline - demo cards remain */ }
+    } catch (_) { /* backend offline → demo cards remain */ }
   }
 
   function livePropCard(p) {
@@ -637,18 +651,18 @@
     return '<div class="prop-card" data-type="' + (p.propertyType || 'apartment') + '">' +
       '<div class="prop-img" style="background:linear-gradient(135deg,#1e3a8a,#0d9488)">' +
         (img ? '<img class="prop-img-bg" src="' + img + '" alt="' + escapeAttr(p.name) + '" loading="lazy" referrerpolicy="no-referrer">'
-             : '<div class="prop-img-placeholder"><span style="font-size:4rem">\uD83C\uDFE0</span></div>') +
+             : '<div class="prop-img-placeholder"><span style="font-size:4rem">🏠</span></div>') +
         '<div class="prop-badge"><span class="tag tag-' + (p.isAvailable ? 'available' : 'rented') + '">' + (p.isAvailable ? 'Available' : 'Rented') + '</span></div>' +
       '</div>' +
       '<div class="prop-body">' +
         '<div class="prop-title">' + escapeHtml(p.name) + '</div>' +
-        '<div class="prop-loc">' + escapeHtml(p.city) + ' \u2014 ' + escapeHtml(p.address || '') + '</div>' +
+        '<div class="prop-loc">' + escapeHtml(p.city) + ' — ' + escapeHtml(p.address || '') + '</div>' +
         '<div class="prop-features">' +
           (beds > 0 ? '<div class="prop-feat">' + beds + ' Beds</div>' : '') +
           '<div class="prop-feat">' + baths + ' Bath' + (baths > 1 ? 's' : '') + '</div>' +
         '</div>' +
         '<div class="prop-footer">' +
-          '<div class="prop-price">GH\u20B5' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
+          '<div class="prop-price">GH₵' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
           '<button class="btn btn-primary" style="padding:8px 16px;font-size:.82rem" onclick="openLiveProperty(\'' + p._id + '\')">View Details</button>' +
         '</div>' +
       '</div>' +
@@ -664,13 +678,13 @@
       const img = (p.images && p.images[0] && p.images[0].url) || null;
       const hero = img
         ? '<img class="pd-hero" src="' + img + '" alt="' + escapeAttr(p.name) + '" referrerpolicy="no-referrer">'
-        : '<div class="pd-hero" style="background:linear-gradient(135deg,#1e3a8a,#0d9488);display:flex;align-items:center;justify-content:center"><span style="font-size:5rem">\uD83C\uDFE0</span></div>';
+        : '<div class="pd-hero" style="background:linear-gradient(135deg,#1e3a8a,#0d9488);display:flex;align-items:center;justify-content:center"><span style="font-size:5rem">🏠</span></div>';
       body.innerHTML = hero +
         '<div class="pd-body">' +
           '<div class="pd-row">' +
             '<div><div class="pd-title">' + escapeHtml(p.name) + '</div>' +
-            '<div class="pd-loc">' + escapeHtml(p.city) + ' \u2014 ' + escapeHtml(p.address || '') + '</div></div>' +
-            '<div class="pd-price">GH\u20B5' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
+            '<div class="pd-loc">' + escapeHtml(p.city) + ' — ' + escapeHtml(p.address || '') + '</div></div>' +
+            '<div class="pd-price">GH₵' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
           '</div>' +
           '<div><span class="tag tag-' + (p.isAvailable ? 'available' : 'rented') + '">' + (p.isAvailable ? 'Available' : 'Rented') + '</span></div>' +
           '<div class="pd-feats">' +
@@ -691,114 +705,8 @@
     } catch (e) { showToast(e.message, 'error'); }
   }
 
-  // ── EXTRA LINKING HELPERS ───────────────────────────────────────────────────
-  function goToDashOrLogin(tab) {
-    if (!Auth.isAuthed()) {
-      openModal('login');
-      return showToast('Please sign in to continue', 'error');
-    }
-    currentDashTab = tab || 'overview';
-    showPage('dashboard');
-  }
-
-  async function applyPropSearch() {
-    const q    = (document.getElementById('prop-search-q')?.value || '').trim().toLowerCase();
-    const type = document.getElementById('prop-search-type')?.value || 'all';
-    const loc  = document.getElementById('prop-search-loc')?.value || '';
-    const grid = document.getElementById('props-grid-2');
-    if (!grid) return;
-
-    if (typeof window.properties === 'object' && Array.isArray(window.properties)) {
-      const filtered = window.properties.filter(p => {
-        if (type !== 'all' && p.type !== type) return false;
-        if (loc && !(p.loc || '').toLowerCase().includes(loc.toLowerCase())) return false;
-        if (q && !((p.title || '') + ' ' + (p.loc || '')).toLowerCase().includes(q)) return false;
-        return true;
-      });
-      if (typeof window.renderProps === 'function') {
-        const original = window.properties;
-        window.properties = filtered;
-        try { window.renderProps('props-grid-2', 'all'); }
-        finally { window.properties = original; }
-      }
-      if (!filtered.length) {
-        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--gray600)"><div style="font-weight:600;color:var(--navy);margin-bottom:6px">No matches</div>Try a different search term or clear filters.</div>';
-      }
-    }
-
-    try {
-      const params = new URLSearchParams();
-      if (type !== 'all') params.set('type', type);
-      const r = await api('/properties?' + params.toString(), { auth: false });
-      const list = (r.data || []).filter(p => {
-        if (loc && !((p.address || '') + ' ' + (p.city || '')).toLowerCase().includes(loc.toLowerCase())) return false;
-        if (q && !((p.name || '') + ' ' + (p.city || '') + ' ' + (p.address || '')).toLowerCase().includes(q)) return false;
-        return true;
-      });
-      if (list.length) grid.innerHTML = list.map(livePropCard).join('');
-    } catch (_) { /* backend offline */ }
-  }
-
-  // ── INFO / LEGAL / HELP MODAL ───────────────────────────────────────────────
-  const INFO_CONTENT = {
-    'help': {
-      title: 'Help Center', sub: 'Quick answers to common questions.',
-      body: '<h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Account</h3><p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Create an account, verify your Ghana Card and face, then sign in to access the dashboard.</p><h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Listings</h3><p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Landlords can list properties from their dashboard once verification is complete.</p><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Contact Support</button>'
-    },
-    'landlord-guide': {
-      title: 'Landlord Guide', sub: 'Everything you need to start earning from your property.',
-      body: '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li>Register and choose <strong>Landlord</strong> as your role.</li><li>Verify your Ghana Card and enroll your face.</li><li>Click <strong>+ Add Property</strong> from your dashboard.</li><li>Wait for admin approval (within 24h).</li><li>Approve tenancy requests, generate invoices, track payments.</li></ol><button class="btn btn-primary" onclick="closeInfoModal();openModal(\'register\')">Become a Landlord</button>'
-    },
-    'tenant-guide': {
-      title: 'Tenant Guide', sub: 'How to find and rent a verified property.',
-      body: '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li>Browse properties on the <strong>Properties</strong> page.</li><li>Click <strong>View Details</strong> then <strong>Apply Now</strong>.</li><li>Sign in or register; complete identity verification.</li><li>The landlord reviews and approves your request.</li><li>Pay rent and file maintenance from your dashboard.</li></ol><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'properties\')">Browse Properties</button>'
-    },
-    'privacy': {
-      title: 'Privacy Policy', sub: 'How we collect, use, and protect your data.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Future Property Holdings collects only the data needed to verify your identity, list properties, and handle rent. Personal data is encrypted at rest and in transit, never sold to third parties, and is deletable on request.</p><p style="color:var(--gray600);line-height:1.7">For data subject requests, email <a href="mailto:privacy@fph.gh" style="color:var(--blue2)">privacy@fph.gh</a>.</p>'
-    },
-    'terms': {
-      title: 'Terms of Use', sub: 'The agreement between you and Future Property Holdings.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">By creating an account you agree to use the platform truthfully, list only properties you have the right to rent, and pay any agreed-upon rent on time.</p><p style="color:var(--gray600);line-height:1.7">Misuse of the platform will result in account suspension and may be reported to authorities.</p>'
-    },
-    'cookies': {
-      title: 'Cookie Policy', sub: 'What we store on your device.',
-      body: '<p style="color:var(--gray600);line-height:1.7">We use essential cookies and localStorage to keep you signed in. We do not use third-party advertising trackers. Clear them from your browser settings to sign out.</p>'
-    },
-    'careers': {
-      title: 'Careers', sub: 'Join the team building the future of Ghanaian rentals.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:18px">We hire engineers, designers, and field verification officers in Accra and Kumasi. Send your CV to <a href="mailto:careers@fph.gh" style="color:var(--blue2)">careers@fph.gh</a>.</p><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Get in Touch</button>'
-    },
-    'reminders': {
-      title: 'Automated Reminders', sub: 'How we keep tenants and landlords on schedule.',
-      body: '<ul style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li><strong>7 days</strong> before \u2014 email reminder.</li><li><strong>3 days</strong> before \u2014 email + SMS.</li><li><strong>1 day</strong> before \u2014 final SMS.</li><li><strong>On due date</strong> \u2014 in-app notification.</li><li><strong>Overdue</strong> \u2014 daily SMS until paid.</li></ul><button class="btn btn-primary" onclick="closeInfoModal();goToDashOrLogin(\'rent\')">Open Rent Dashboard</button>'
-    },
-    'forgot-password': {
-      title: 'Reset your password', sub: 'We will email you a secure reset link.',
-      body: '<div class="form-group"><label>Email</label><input type="email" id="forgot-email" placeholder="your@email.com"></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitForgot()">Send reset link</button><p style="font-size:.78rem;color:var(--gray400);margin-top:14px;text-align:center">If an account with that email exists you will receive a reset link within a few minutes.</p>'
-    }
-  };
-
-  function openInfoModal(key) {
-    const c = INFO_CONTENT[key];
-    if (!c) return;
-    document.getElementById('info-modal-title').textContent = c.title;
-    document.getElementById('info-modal-sub').textContent = c.sub;
-    document.getElementById('info-modal-body').innerHTML = c.body;
-    document.getElementById('info-modal').classList.add('open');
-  }
-  function closeInfoModal() { document.getElementById('info-modal').classList.remove('open'); }
-  async function submitForgot() {
-    const e = document.getElementById('forgot-email')?.value || '';
-    if (!/^\S+@\S+\.\S+$/.test(e)) return showToast('Enter a valid email', 'error');
-    try {
-      await api('/auth/forgot-password', { method: 'POST', body: { email: e }, auth: false });
-    } catch (_) { /* always show success to avoid email enumeration */ }
-    closeInfoModal();
-    showToast('If that account exists, a reset link is on its way.', 'success');
-  }
-
   // ── BOOTSTRAP ───────────────────────────────────────────────────────────────
+  // Override globals exposed via inline onclick handlers
   window.handleLogin = handleLogin;
   window.handleRegister = handleRegister;
   window.logout = logout;
@@ -814,12 +722,8 @@
   window.reviewProp = reviewProp;
   window.toggleUser = toggleUser;
   window.openLiveProperty = openLiveProperty;
-  window.goToDashOrLogin = goToDashOrLogin;
-  window.applyPropSearch = applyPropSearch;
-  window.openInfoModal   = openInfoModal;
-  window.closeInfoModal  = closeInfoModal;
-  window.submitForgot    = submitForgot;
 
+  // Hook into showPage to render the dashboard when navigated to
   const _showPage = window.showPage;
   window.showPage = function (page) {
     if (page === 'dashboard' && !Auth.isAuthed()) {
@@ -831,6 +735,7 @@
     if (page === 'properties' || page === 'home') loadLiveProperties();
   };
 
+  // First-load: refresh user info and update nav
   document.addEventListener('DOMContentLoaded', async () => {
     updateNavAuth();
     if (Auth.isAuthed()) {
@@ -838,10 +743,182 @@
         const r = await api('/auth/me');
         Auth.session = { ...Auth.session, user: r.data };
         updateNavAuth();
-      } catch (_) {}
+      } catch (_) { /* token might be invalid; updateNavAuth already cleared */ }
     }
     loadLiveProperties();
   });
 
+  // ── EXTRA LINKING HELPERS ───────────────────────────────────────────────────
+  // Unified router used by service cards & Platform footer links
+  function goToDashOrLogin(tab) {
+    if (!Auth.isAuthed()) {
+      openModal('login');
+      return showToast('Please sign in to continue', 'error');
+    }
+    currentDashTab = tab || 'overview';
+    showPage('dashboard');
+  }
+
+  // Properties-page search bar: filter the demo grid + (when live) hit the API
+  async function applyPropSearch() {
+    const q    = (document.getElementById('prop-search-q')?.value || '').trim().toLowerCase();
+    const type = document.getElementById('prop-search-type')?.value || 'all';
+    const loc  = document.getElementById('prop-search-loc')?.value || '';
+    const grid = document.getElementById('props-grid-2');
+    if (!grid) return;
+
+    // Demo data filter (works without backend)
+    if (typeof window.properties === 'object' && Array.isArray(window.properties)) {
+      const filtered = window.properties.filter(p => {
+        if (type !== 'all' && p.type !== type) return false;
+        if (loc && !(p.loc || '').toLowerCase().includes(loc.toLowerCase())) return false;
+        if (q && !((p.title || '') + ' ' + (p.loc || '')).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      if (typeof window.renderProps === 'function') {
+        // Render only matching subset by temporarily swapping properties
+        const original = window.properties;
+        window.properties = filtered;
+        try { window.renderProps('props-grid-2', 'all'); }
+        finally { window.properties = original; }
+      }
+      if (!filtered.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--gray600)"><div style="font-weight:600;color:var(--navy);margin-bottom:6px">No matches</div>Try a different search term or clear filters.</div>';
+      }
+    }
+
+    // Live backend search (overrides the demo cards if results returned)
+    if (Auth.isAuthed() || true) {
+      try {
+        const params = new URLSearchParams();
+        if (type !== 'all') params.set('type', type);
+        const r = await api('/properties?' + params.toString(), { auth: false });
+        const list = (r.data || []).filter(p => {
+          if (loc && !(p.address || '' + ' ' + p.city).toLowerCase().includes(loc.toLowerCase())) return false;
+          if (q && !((p.name || '') + ' ' + (p.city || '') + ' ' + (p.address || '')).toLowerCase().includes(q)) return false;
+          return true;
+        });
+        if (list.length) grid.innerHTML = list.map(livePropCard).join('');
+      } catch (_) { /* backend offline → keep demo result */ }
+    }
+  }
+
+  // ── INFO / LEGAL / HELP MODAL ───────────────────────────────────────────────
+  const INFO_CONTENT = {
+    'help': {
+      title: 'Help Center',
+      sub: 'Quick answers to common questions.',
+      body:
+        '<h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Account</h3>' +
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Create an account, verify your Ghana Card and face, then sign in to access the dashboard. Forgotten passwords can be reset via the Forgot password link on the login modal.</p>' +
+        '<h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Listings</h3>' +
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Landlords can list properties from their dashboard once verification is complete. Each listing is reviewed by an admin within 24 hours.</p>' +
+        '<h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Still need help?</h3>' +
+        '<button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Contact Support</button>'
+    },
+    'landlord-guide': {
+      title: 'Landlord Guide',
+      sub: 'Everything you need to start earning from your property.',
+      body:
+        '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px">' +
+          '<li>Register and choose <strong>Landlord</strong> as your role.</li>' +
+          '<li>Verify your Ghana Card and enroll your face for trust scoring.</li>' +
+          '<li>From your dashboard, click <strong>+ Add Property</strong> with photos, address, and price.</li>' +
+          '<li>Wait for admin approval (usually within 24h).</li>' +
+          '<li>Approve incoming tenancy requests, generate invoices, track payments.</li>' +
+        '</ol>' +
+        '<button class="btn btn-primary" onclick="closeInfoModal();openModal(\'register\')">Become a Landlord</button>'
+    },
+    'tenant-guide': {
+      title: 'Tenant Guide',
+      sub: 'How to find and rent a verified property.',
+      body:
+        '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px">' +
+          '<li>Browse verified properties on the <strong>Properties</strong> page.</li>' +
+          '<li>Click <strong>View Details</strong> and then <strong>Apply Now</strong>.</li>' +
+          '<li>Sign in or register if prompted; complete identity verification.</li>' +
+          '<li>The landlord reviews your request and either approves or rejects it.</li>' +
+          '<li>Once approved, pay rent and file maintenance requests from your dashboard.</li>' +
+        '</ol>' +
+        '<button class="btn btn-primary" onclick="closeInfoModal();showPage(\'properties\')">Browse Properties</button>'
+    },
+    'privacy': {
+      title: 'Privacy Policy',
+      sub: 'How we collect, use, and protect your data.',
+      body:
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Future Property Holdings collects only the data needed to verify your identity, list properties, and handle rent. Personal data is encrypted at rest and in transit, never sold to third parties, and is deletable on request.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Biometric data (face descriptors and Ghana Card details) is used solely for verification and never shared. You can request deletion of your account and all associated data from the Profile section of your dashboard.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7">For data subject requests, email <a href="mailto:privacy@fph.gh" style="color:var(--blue2)">privacy@fph.gh</a>.</p>'
+    },
+    'terms': {
+      title: 'Terms of Use',
+      sub: 'The agreement between you and Future Property Holdings.',
+      body:
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">By creating an account you agree to use the platform truthfully, list only properties you have the right to rent, and pay any agreed-upon rent on time.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Future Property Holdings is a marketplace and is not a party to the lease between landlord and tenant. Disputes should be raised via the inquiry system; admin moderation is available where needed.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7">Misuse of the platform — including fake listings, harassment, or fraud — will result in account suspension and may be reported to authorities.</p>'
+    },
+    'cookies': {
+      title: 'Cookie Policy',
+      sub: 'What we store on your device.',
+      body:
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">We use a small number of essential cookies (and localStorage entries) to keep you signed in and remember your preferences. We do not use third-party advertising trackers.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7">You can clear them at any time from your browser settings; this will sign you out.</p>'
+    },
+    'careers': {
+      title: 'Careers',
+      sub: 'Join the team building the future of Ghanaian rentals.',
+      body:
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">We hire engineers, product designers, customer-success specialists, and field verification officers in Accra and Kumasi.</p>' +
+        '<p style="color:var(--gray600);line-height:1.7;margin-bottom:18px">Send your CV to <a href="mailto:careers@fph.gh" style="color:var(--blue2)">careers@fph.gh</a> with a short note about why FPH excites you.</p>' +
+        '<button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Get in Touch</button>'
+    },
+    'reminders': {
+      title: 'Automated Reminders',
+      sub: 'How we keep tenants and landlords on schedule.',
+      body:
+        '<ul style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px">' +
+          '<li><strong>7 days</strong> before due date — gentle email reminder to the tenant.</li>' +
+          '<li><strong>3 days</strong> before — second email plus SMS.</li>' +
+          '<li><strong>1 day</strong> before — final SMS.</li>' +
+          '<li><strong>On due date</strong> — both parties receive an in-app notification.</li>' +
+          '<li><strong>Overdue</strong> — daily SMS until paid; landlord sees an Overdue badge in their dashboard.</li>' +
+        '</ul>' +
+        '<button class="btn btn-primary" onclick="closeInfoModal();goToDashOrLogin(\'rent\')">Open Rent Dashboard</button>'
+    },
+    'forgot-password': {
+      title: 'Reset your password',
+      sub: 'We will email you a secure reset link.',
+      body:
+        '<div class="form-group"><label>Email</label><input type="email" id="forgot-email" placeholder="your@email.com"></div>' +
+        '<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitForgot()">Send reset link</button>' +
+        '<p style="font-size:.78rem;color:var(--gray400);margin-top:14px;text-align:center">If an account with that email exists you will receive a reset link within a few minutes.</p>'
+    }
+  };
+
+  function openInfoModal(key) {
+    const c = INFO_CONTENT[key];
+    if (!c) return;
+    document.getElementById('info-modal-title').textContent = c.title;
+    document.getElementById('info-modal-sub').textContent = c.sub;
+    document.getElementById('info-modal-body').innerHTML = c.body;
+    document.getElementById('info-modal').classList.add('open');
+  }
+  function closeInfoModal() { document.getElementById('info-modal').classList.remove('open'); }
+  function submitForgot() {
+    const e = document.getElementById('forgot-email')?.value || '';
+    if (!/^\S+@\S+\.\S+$/.test(e)) return showToast('Enter a valid email', 'error');
+    closeInfoModal();
+    showToast('If that account exists, a reset link is on its way.', 'success');
+  }
+
+  // Expose extra helpers
+  window.goToDashOrLogin = goToDashOrLogin;
+  window.applyPropSearch = applyPropSearch;
+  window.openInfoModal   = openInfoModal;
+  window.closeInfoModal  = closeInfoModal;
+  window.submitForgot    = submitForgot;
+
+  // Expose for debugging
   window.FPH = { api, Auth, renderDashShell };
 })();
