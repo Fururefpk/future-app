@@ -24,7 +24,21 @@ const adminRoutes = require('./routes/admin');
 const app = express();
 
 // Middleware - Security
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://www.googletagmanager.com"],
+      styleSrc:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc:     ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://source.unsplash.com", "https://*.unsplash.com"],
+      fontSrc:    ["'self'", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'", "https://api.resend.com"],
+      frameSrc:   ["'none'"],
+      objectSrc:  ["'none'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
 app.use(compression());
 
 // Middleware - CORS
@@ -49,6 +63,19 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+
+// Strict rate limiter for auth endpoints (5 requests / minute)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: 'Too many auth attempts, please try again in a minute.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/v1/auth/forgot-password', authLimiter);
+app.use('/api/v1/auth/reset-password', authLimiter);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -83,7 +110,15 @@ app.get('/', (req, res) => {
   res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  index: false,
+  maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.set('Cache-Control', 'public, max-age=86400'); // 1 day
+    }
+  }
+}));
 app.use(express.static(__dirname, { index: false, extensions: ['html'] }));
 
 // 404 handler

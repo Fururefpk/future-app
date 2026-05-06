@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
+const { sendEmail, welcomeEmail, resetEmail, verifyEmail } = require('../utils/mailer');
 
 // Generate JWT Token
 const generateToken = (id, type = 'access') => {
@@ -41,8 +43,13 @@ exports.register = async (req, res) => {
       email,
       phone,
       password,
-      role: role || 'tenant'
+      role: (role === 'landlord') ? 'landlord' : 'tenant'
     });
+
+    // Generate email verification token
+    const emailToken = crypto.randomBytes(32).toString('hex');
+    user.emailVerificationToken = crypto.createHash('sha256').update(emailToken).digest('hex');
+    user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
     // Save user to database
     await user.save();
@@ -55,6 +62,18 @@ exports.register = async (req, res) => {
     user.lastLogin = new Date();
     user.lastLoginIP = req.ip;
     await user.save();
+
+    // Send welcome + verification emails (non-blocking)
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const verifyUrl = `${appUrl}/api/v1/auth/verify-email/${emailToken}`;
+    try {
+      const welcome = welcomeEmail(firstName);
+      await sendEmail({ to: email, subject: welcome.subject, html: welcome.html });
+      const verify = verifyEmail(verifyUrl);
+      await sendEmail({ to: email, subject: verify.subject, html: verify.html });
+    } catch (emailErr) {
+      console.error('Welcome/verify email failed:', emailErr.message);
+    }
 
     // Return response
     res.status(201).json({
@@ -337,3 +356,109 @@ function computeDistance(descriptor1, descriptor2) {
 }
 
 module.exports.computeDistance = computeDistance;
+
+// @desc    Forgot Password — send reset link
+// @route   POST /api/v1/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+
+    // Always respond with 200 to avoid email enumeration
+    if (!user) {
+      return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save({ validateBeforeSave: false });
+
+    // Send reset email
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const resetUrl = `${appUrl}/?reset=${resetToken}`;
+    try {
+      const tpl = resetEmail(resetUrl);
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
+    } catch (emailErr) {
+      console.error('Reset email failed:', emailErr.message);
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      return res.status(500).json({ success: false, message: 'Email could not be sent' });
+    }
+
+    res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error processing request', error: error.message });
+  }
+};
+
+// @desc    Reset Password
+// @route   POST /api/v1/auth/reset-password/:token
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    const { password } = req.body;
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password reset successfully. You may now log in.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error resetting password', error: error.message });
+  }
+};
+
+// @desc    Verify Email
+// @route   GET /api/v1/auth/verify-email/:token
+// @access  Public
+exports.verifyEmail = async (req, res) => {
+  try {
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification token' });
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Redirect to homepage with success flag
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    res.redirect(`${appUrl}/?verified=true`);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error verifying email', error: error.message });
+  }
+};
