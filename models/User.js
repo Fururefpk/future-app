@@ -1,185 +1,108 @@
+'use strict';
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const bcrypt   = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  // Basic Information
-  firstName: {
-    type: String,
-    required: [true, 'First name is required'],
-    trim: true,
-    minlength: [2, 'First name must be at least 2 characters']
+const refreshTokenSchema = new mongoose.Schema({
+  token:     { type: String, required: true },
+  device:    { type: String, default: 'Unknown' },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true },
+}, { _id: false });
+
+const passkeySchema = new mongoose.Schema({
+  credentialId: { type: String, required: true },
+  publicKey:    { type: String, required: true },
+  counter:      { type: Number, default: 0 },
+  createdAt:    { type: Date, default: Date.now },
+}, { _id: false });
+
+const UserSchema = new mongoose.Schema({
+  firstName: { type: String, required: true, trim: true, maxlength: 50 },
+  lastName:  { type: String, required: true, trim: true, maxlength: 50 },
+  email:     { type: String, required: true, unique: true, lowercase: true, trim: true },
+  phone:     { type: String, required: true, trim: true },
+  password:  { type: String, required: true, select: false, minlength: 8 },
+  role:      { type: String, enum: ['tenant', 'landlord', 'admin'], default: 'tenant' },
+  avatar:    { type: String, default: null },
+
+  isActive:      { type: Boolean, default: true },
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationToken:       { type: String, select: false },
+  emailVerificationTokenExpires:{ type: Date,   select: false },
+
+  passwordResetToken:   { type: String, select: false },
+  passwordResetExpires: { type: Date,   select: false },
+
+  verification: {
+    status:             { type: String, enum: ['unverified','pending','verified','rejected'], default: 'unverified' },
+    ghanaCardVerified:  { type: Boolean, default: false },
+    faceVerified:       { type: Boolean, default: false },
+    ghanaCardNumber:    { type: String, default: null },
+    ghanaCardName:      { type: String, default: null },
+    ghanaCardImageUrl:  { type: String, default: null },
+    submittedAt:        { type: Date,   default: null },
+    reviewedAt:         { type: Date,   default: null },
+    reviewedBy:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rejectionReason:    { type: String, default: null },
   },
-  lastName: {
-    type: String,
-    required: [true, 'Last name is required'],
-    trim: true,
-    minlength: [2, 'Last name must be at least 2 characters']
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
-  },
-  phone: {
-    type: String,
-    required: [true, 'Phone number is required'],
-    match: [/^(\+233|0)\d{9}$/, 'Please provide a valid Ghana phone number']
-  },
-  
-  // Authentication
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters'],
-    select: false // Don't return password by default
-  },
-  
-  // Role
-  role: {
-    type: String,
-    enum: ['tenant', 'landlord', 'admin'],
-    default: 'tenant'
-  },
-  
-  // Biometric Data
+
   biometric: {
-    faceEnrolled: {
-      type: Boolean,
-      default: false
-    },
-    faceData: [{
-      timestamp: Date,
-      descriptor: [Number], // 128-dimensional face descriptor from face-api.js
-      quality: Number // 0-100 quality score
-    }],
-    ghanaCardVerified: {
-      type: Boolean,
-      default: false
-    },
-    ghanaCardNumber: {
-      type: String,
-      match: [/^GHA-[0-9]{9}-[0-9]$/, 'Invalid Ghana Card format'],
-      sparse: true
-    },
-    ghanaCardName: String,
-    biometricVerifiedAt: Date
+    faceDescriptor: { type: [Number], select: false, default: undefined },
+    faceEnrolledAt: { type: Date, default: null },
   },
-  
-  // Account Status
-  isActive: {
-    type: Boolean,
-    default: true
+
+  notifications: {
+    email:     { type: Boolean, default: true },
+    sms:       { type: Boolean, default: true },
+    push:      { type: Boolean, default: true },
+    reminders: { type: Boolean, default: true },
   },
-  isEmailVerified: {
-    type: Boolean,
-    default: false
+
+  twoFA: {
+    enabled:     { type: Boolean, default: false },
+    secret:      { type: String, select: false, default: null },
+    backupCodes: { type: [String], select: false, default: [] },
   },
-  emailVerificationToken: String,
-  emailVerificationExpires: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-  
-  // Security
-  loginAttempts: {
-    type: Number,
-    default: 0
-  },
-  lockUntil: Date,
-  lastLogin: Date,
-  lastLoginIP: String,
-  
-  // Timestamps
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  // Additional Info
-  profileImage: String,
-  bio: String,
-  preferences: {
-    notifications: { type: Boolean, default: true },
-    newsletter: { type: Boolean, default: false },
-    twoFactorAuth: { type: Boolean, default: false }
-  }
+
+  passkeys:      [passkeySchema],
+  refreshTokens: { type: [refreshTokenSchema], select: false },
+  lastLoginAt:   { type: Date, default: null },
 }, { timestamps: true });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) {
-    return next();
-  }
+// ── Indexes ────────────────────────────────────────────────────
+// `unique: true` on `email` already creates this index.
+UserSchema.index({ role: 1 });
+UserSchema.index({ 'verification.status': 1 });
 
-  try {
-    const salt = await bcrypt.genSalt(parseInt(process.env.BCRYPT_ROUNDS) || 12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+// ── Pre-save: hash password ────────────────────────────────────
+UserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
-// Method to compare passwords
-userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+// ── Instance method: compare password ─────────────────────────
+UserSchema.methods.comparePassword = async function (candidate) {
+  return bcrypt.compare(candidate, this.password);
 };
 
-// Method to check if account is locked
-userSchema.methods.isLocked = function() {
-  return this.lockUntil && this.lockUntil > Date.now();
-};
+// ── Virtual: fullName ──────────────────────────────────────────
+UserSchema.virtual('fullName').get(function () {
+  return `${this.firstName} ${this.lastName}`;
+});
 
-// Method to increment login attempts
-userSchema.methods.incLoginAttempts = async function() {
-  // Reset attempts if lock has expired
-  if (this.lockUntil && this.lockUntil < Date.now()) {
-    return this.updateOne({
-      $set: { loginAttempts: 1 },
-      $unset: { lockUntil: 1 }
-    });
-  }
+// ── toJSON: strip sensitive fields ────────────────────────────
+UserSchema.set('toJSON', {
+  virtuals: true,
+  transform(_, ret) {
+    delete ret.password;
+    delete ret.refreshTokens;
+    delete ret.emailVerificationToken;
+    delete ret.passwordResetToken;
+    delete ret.twoFA?.secret;
+    delete ret.biometric?.faceDescriptor;
+    return ret;
+  },
+});
 
-  // Increment attempts
-  const updates = { $inc: { loginAttempts: 1 } };
-  
-  // Lock account after 5 failed attempts for 15 minutes
-  const maxAttempts = 5;
-  const lockTime = 15 * 60 * 1000; // 15 minutes
-  
-  if (this.loginAttempts + 1 >= maxAttempts && !this.isLocked()) {
-    updates.$set = { lockUntil: Date.now() + lockTime };
-  }
-
-  return this.updateOne(updates);
-};
-
-// Method to reset login attempts
-userSchema.methods.resetLoginAttempts = async function() {
-  return this.updateOne({
-    $set: { loginAttempts: 0 },
-    $unset: { lockUntil: 1 }
-  });
-};
-
-// Method to get public profile
-userSchema.methods.getPublicProfile = function() {
-  const user = this.toObject();
-  delete user.password;
-  delete user.emailVerificationToken;
-  delete user.loginAttempts;
-  return user;
-};
-
-// Index for email uniqueness
-userSchema.index({ email: 1 });
-userSchema.index({ 'biometric.ghanaCardNumber': 1 });
-userSchema.index({ createdAt: -1 });
-
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', UserSchema);

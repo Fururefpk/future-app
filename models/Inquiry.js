@@ -1,38 +1,28 @@
+'use strict';
 const mongoose = require('mongoose');
 
-// Threaded inquiries from tenants to landlords on a specific property.
-// Solves: weak landlord-tenant communication workflow.
-const inquirySchema = new mongoose.Schema({
-  property: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Property',
-    required: true
-  },
-  landlord: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  tenant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  subject: { type: String, default: 'Property inquiry' },
-  status: {
-    type: String,
-    enum: ['open', 'replied', 'closed'],
-    default: 'open'
-  },
-  messages: [{
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    body: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-  }]
+const messageSchema = new mongoose.Schema({
+  sender:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true, trim: true, maxlength: 3000 },
+  readBy:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 }, { timestamps: true });
 
-inquirySchema.index({ landlord: 1, status: 1 });
-inquirySchema.index({ tenant: 1, status: 1 });
-inquirySchema.index({ property: 1 });
+const InquirySchema = new mongoose.Schema({
+  property:  { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
+  sender:    { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+  recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+  subject:   { type: String, required: true, trim: true, maxlength: 200 },
 
-module.exports = mongoose.model('Inquiry', inquirySchema);
+  status: { type: String, enum: ['open','closed'], default: 'open' },
+  messages:    { type: [messageSchema], default: [] },
+  isDeletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
+  closedAt: { type: Date, default: null },
+  closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+}, { timestamps: true });
+
+InquirySchema.index({ sender: 1 });
+InquirySchema.index({ recipient: 1 });
+InquirySchema.index({ property: 1 });
+
+module.exports = mongoose.model('Inquiry', InquirySchema);

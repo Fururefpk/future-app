@@ -1,217 +1,188 @@
+/**
+ * server.js
+ * Future Property Holdings — Express application entry point.
+ *
+ * Wires together: database, middleware stack, all route modules,
+ * global error handler, and 404 fallback.
+ *
+ * Usage:
+ *   node server.js                    — start locally
+ *   SERVERLESS=1 node server.js       — Vercel (skips listen())
+ */
+
+'use strict';
+
 require('dotenv').config();
-const express = require('express');
-const https = require('https');
-const http = require('http');
-const fs = require('fs');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const biometricRoutes = require('./routes/biometric');
-const propertyRoutes = require('./routes/properties');
-const userRoutes = require('./routes/users');
-const tenancyRoutes = require('./routes/tenancies');
-const rentRoutes = require('./routes/rent');
+const express        = require('express');
+const cors           = require('cors');
+const helmet         = require('helmet');
+const morgan         = require('morgan');
+const compression    = require('compression');
+const rateLimit      = require('express-rate-limit');
+const mongoSanitize  = require('express-mongo-sanitize');
+const xss            = require('xss-clean');
+
+const { connectDB, getDBHealth } = require('./config/database');
+const seedCreator       = require('./utils/seedCreator');
+
+// Route modules
+const authRoutes        = require('./routes/auth');
+const userRoutes        = require('./routes/users');
+const propertyRoutes    = require('./routes/properties');
+const tenancyRoutes     = require('./routes/tenancies');
+const rentRoutes        = require('./routes/rent');
 const maintenanceRoutes = require('./routes/maintenance');
-const inquiryRoutes = require('./routes/inquiries');
-const adminRoutes = require('./routes/admin');
+const inquiryRoutes     = require('./routes/inquiries');
+const biometricRoutes   = require('./routes/biometric');
+const adminRoutes       = require('./routes/admin');
+const analyticsRoutes   = require('./routes/analytics');
+const supportRoutes     = require('./routes/support');
 
-// Initialize Express app
+// ── App ────────────────────────────────────────────────────────────
 const app = express();
 
-// Middleware - Security
+// ── Trust proxy (Vercel / Render sit behind a reverse proxy) ──────
+app.set('trust proxy', 1);
+
+// ── Security headers ──────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc:  ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://www.googletagmanager.com"],
-      styleSrc:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      imgSrc:     ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://source.unsplash.com", "https://*.unsplash.com"],
-      fontSrc:    ["'self'", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'", "https://api.resend.com"],
-      frameSrc:   ["'none'"],
-      objectSrc:  ["'none'"]
-    }
-  },
-  crossOriginEmbedderPolicy: false
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
+
+// ── CORS ──────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return cb(null, true);
+    if (
+      ALLOWED_ORIGINS.includes(origin) ||
+      /localhost/.test(origin) ||
+      process.env.NODE_ENV === 'development'
+    ) {
+      return cb(null, true);
+    }
+    cb(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key'],
+}));
+
+app.options('*', cors()); // preflight for all routes
+
+// ── Body parsers ──────────────────────────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ── Compression ───────────────────────────────────────────────────
 app.use(compression());
 
-// Middleware - CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: process.env.CORS_CREDENTIALS === 'true',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// ── Sanitisation (NoSQL injection + XSS) ─────────────────────────
+app.use(mongoSanitize());
+app.use(xss());
 
-// Middleware - Body Parser
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// ── HTTP logging ──────────────────────────────────────────────────
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: 'Too many requests from this IP, please try again later.',
+// ── Global rate limiter (loose — individual routes add tighter ones) ──
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-});
-
-app.use('/api/', limiter);
-
-// Strict rate limiter for auth endpoints (5 requests / minute)
-const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: 'Too many auth attempts, please try again in a minute.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/v1/auth/login', authLimiter);
-app.use('/api/v1/auth/register', authLimiter);
-app.use('/api/v1/auth/forgot-password', authLimiter);
-app.use('/api/v1/auth/reset-password', authLimiter);
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// API Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/biometric', biometricRoutes);
-app.use('/api/v1/properties', propertyRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/tenancies', tenancyRoutes);
-app.use('/api/v1/rent', rentRoutes);
-app.use('/api/v1/maintenance', maintenanceRoutes);
-app.use('/api/v1/inquiries', inquiryRoutes);
-app.use('/api/v1/admin', adminRoutes);
-
-// Static files: root index.html is the marketing SPA; /public serves only assets (no auto-index)
-const path = require('path');
-app.get('/', (req, res) => {
-  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-app.use(express.static(path.join(__dirname, 'public'), {
-  index: false,
-  maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
-  setHeaders(res, filePath) {
-    if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-      res.set('Cache-Control', 'public, max-age=86400'); // 1 day
-    }
-  }
+  message: { success: false, message: 'Too many requests from this IP' },
 }));
-app.use(express.static(__dirname, { index: false, extensions: ['html'] }));
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-    path: req.path
-  });
-});
+// ── Health check ──────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({
+  success: true,
+  uptime: process.uptime(),
+  timestamp: new Date().toISOString(),
+  environment: process.env.NODE_ENV || 'development',
+  database: getDBHealth(),
+}));
 
-// Global error handler
+// ── API routes ────────────────────────────────────────────────────
+const API = '/api/v1';
+
+app.use(`${API}/auth`,        authRoutes);
+app.use(`${API}/users`,       userRoutes);
+app.use(`${API}/properties`,  propertyRoutes);
+app.use(`${API}/tenancies`,   tenancyRoutes);
+app.use(`${API}/rent`,        rentRoutes);
+app.use(`${API}/maintenance`, maintenanceRoutes);
+app.use(`${API}/inquiries`,   inquiryRoutes);
+app.use(`${API}/biometric`,   biometricRoutes);
+app.use(`${API}/admin`,       adminRoutes);
+app.use(`${API}/analytics`,   analyticsRoutes);
+app.use(`${API}/support`,     supportRoutes);
+
+// ── 404 handler ───────────────────────────────────────────────────
+app.use((req, res) => res.status(404).json({
+  success: false,
+  message: `Route ${req.method} ${req.originalUrl} not found`,
+}));
+
+// ── Global error handler ──────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('[ERROR]', err);
-  
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-  
+  console.error('Unhandled error:', err);
+
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map(e => e.message);
+    return res.status(422).json({ success: false, message: messages.join(', ') });
+  }
+
+  // Mongoose duplicate key
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
+    return res.status(409).json({ success: false, message: `${field} already exists` });
+  }
+
+  // Multer / file upload error
+  if (err.name === 'MulterError') {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
+  // JWT / CORS errors surfaced as Error objects
+  if (err.message?.startsWith('CORS:')) {
+    return res.status(403).json({ success: false, message: err.message });
+  }
+
+  const status = err.statusCode || err.status || 500;
   res.status(status).json({
     success: false,
-    message: message,
-    error: process.env.NODE_ENV === 'development' ? err : {}
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   });
 });
 
-// Database Connection (cached for serverless re-use on Vercel)
-let dbPromise = null;
-function connectDB() {
-  if (dbPromise) return dbPromise;
-  if (!process.env.MONGODB_URI) {
-    console.warn('⚠ MONGODB_URI not set — skipping DB connection');
-    return Promise.resolve();
-  }
-  dbPromise = mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('✓ MongoDB connected successfully'))
-    .catch(err => {
-      console.error('✗ MongoDB connection error:', err.message);
-      dbPromise = null;
-      throw err;
+// ── Database + server bootstrap ───────────────────────────────────
+if (process.env.SERVERLESS !== '1') {
+  const PORT = process.env.PORT || 427;
+  connectDB()
+    .then(async () => {
+      await seedCreator();
+      app.listen(PORT, () =>
+        console.log(`🚀 FPH API running on http://localhost:${PORT}${API}`),
+      );
+    })
+    .catch((err) => {
+      console.error('Failed to start server:', err.message);
+      process.exit(1);
     });
-  return dbPromise;
-}
-app.use(async (req, res, next) => {
-  try { await connectDB(); next(); } catch (e) { next(); }
-});
-
-// Server Setup — only start a listener when NOT running on Vercel serverless
-const PORT = process.env.PORT || 5000;
-let server;
-
-if (process.env.VERCEL || process.env.SERVERLESS) {
-  // Exported app is invoked as a serverless function
-  console.log('✓ Running in serverless mode — app exported, no listener bound');
-} else if (process.env.USE_HTTPS === 'true') {
-  // HTTPS Server
-  try {
-    const privateKey = fs.readFileSync(process.env.SSL_KEY_PATH, 'utf8');
-    const certificate = fs.readFileSync(process.env.SSL_CERT_PATH, 'utf8');
-    const credentials = { key: privateKey, cert: certificate };
-    
-    server = https.createServer(credentials, app);
-    
-    server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-      console.log(`\n✓ HTTPS Server running on https://${process.env.HOST || 'localhost'}:${PORT}`);
-      console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`✓ API Base URL: ${process.env.API_BASE_URL}`);
-    });
-  } catch (err) {
-    console.error('✗ SSL certificate error:', err.message);
-    console.log('Falling back to HTTP server...');
-    
-    server = http.createServer(app);
-    server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-      console.log(`\n⚠ HTTP Server running on http://${process.env.HOST || 'localhost'}:${PORT}`);
-      console.log('WARNING: Running on HTTP instead of HTTPS. Not recommended for production.');
-    });
-  }
-} else {
-  // HTTP Server (development only)
-  server = http.createServer(app);
   
-  server.listen(PORT, process.env.HOST || '0.0.0.0', () => {
-    console.log(`\n⚠ HTTP Server running on http://${process.env.HOST || 'localhost'}:${PORT}`);
-    console.log('WARNING: Running on HTTP. Use HTTPS in production.');
-  });
+} else {
+  // Serverless: connect lazily on first request
+  connectDB().catch(console.error);
 }
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  if (server) server.close(() => console.log('Server closed'));
-  try { await mongoose.connection.close(); console.log('MongoDB connection closed'); } catch (_) {}
-  process.exit(0);
-});
-
-module.exports = app;
+  module.exports = app;

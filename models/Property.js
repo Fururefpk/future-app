@@ -1,120 +1,46 @@
+'use strict';
 const mongoose = require('mongoose');
 
-const propertySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Property name is required'],
-    trim: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
-  address: {
-    type: String,
-    required: [true, 'Address is required'],
-    trim: true
-  },
-  city: {
-    type: String,
-    required: [true, 'City is required'],
-    enum: ['Accra', 'Kumasi', 'Sekondi', 'Cape Coast', 'Takoradi', 'Tema', 'Tamale'],
-    default: 'Accra'
-  },
-  price: {
-    type: Number,
-    required: [true, 'Price is required'],
-    min: [0, 'Price cannot be negative']
-  },
-  rooms: {
-    type: Number,
-    default: 1,
-    min: [1, 'Property must have at least 1 room']
-  },
-  bathrooms: {
-    type: Number,
-    default: 1,
-    min: [1, 'Property must have at least 1 bathroom']
-  },
+const imageSchema = new mongoose.Schema({
+  url:      { type: String, required: true },
+  publicId: { type: String, required: true },
+}, { _id: false });
+
+const PropertySchema = new mongoose.Schema({
+  name:        { type: String, required: true, trim: true, maxlength: 120 },
+  description: { type: String, trim: true, maxlength: 2000, default: '' },
+  address:     { type: String, required: true, trim: true },
+  city:        { type: String, required: true, trim: true },
+  region:      { type: String, trim: true, default: '' },
+
   propertyType: {
     type: String,
-    enum: ['apartment', 'house', 'studio', 'office', 'commercial'],
-    default: 'apartment'
+    enum: ['apartment','house','studio','office','commercial'],
+    default: 'apartment',
   },
-  landlord: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Landlord is required']
-  },
-  images: [{
-    url: String,
-    uploadedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  isAvailable: {
-    type: Boolean,
-    default: true
-  },
-  amenities: [String], // WiFi, AC, Kitchen, etc.
-  rules: String, // House rules
-  
-  // Ratings and Reviews
-  averageRating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
-  },
-  reviews: [{
-    reviewer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    comment: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
 
-  // Contact Info
-  contactPhone: String,
-  contactEmail: String,
+  price:     { type: Number, required: true, min: 0 },   // monthly rent GH₵
+  rooms:     { type: Number, default: 1, min: 0 },       // bedrooms
+  bathrooms: { type: Number, default: 1, min: 1 },
+  amenities: { type: [String], default: [] },
 
-  // Admin verification / approval workflow (problems: fake listings, weak verification, central control)
-  verificationStatus: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  verifiedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  verifiedAt: Date,
-  rejectionReason: String,
+  images:   { type: [imageSchema], default: [] },
+  landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
-  // Timestamps
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  status:          { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
+  rejectionReason: { type: String, default: null },
+  approvedAt:      { type: Date, default: null },
+  approvedBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+  featured:  { type: Boolean, default: false },
+  viewCount: { type: Number, default: 0 },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
-// Index for common queries
-propertySchema.index({ landlord: 1, createdAt: -1 });
-propertySchema.index({ city: 1, isAvailable: 1 });
-propertySchema.index({ price: 1 });
+PropertySchema.index({ landlord: 1 });
+PropertySchema.index({ status: 1, isDeleted: 1 });
+PropertySchema.index({ city: 1, propertyType: 1, price: 1 });
+PropertySchema.index({ featured: 1, status: 1 });
+PropertySchema.index({ name: 'text', description: 'text', address: 'text', city: 'text' });
 
-module.exports = mongoose.model('Property', propertySchema);
+module.exports = mongoose.model('Property', PropertySchema);

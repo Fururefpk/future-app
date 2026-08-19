@@ -1,55 +1,35 @@
+'use strict';
 const mongoose = require('mongoose');
 
-// Tenants log issues; landlords/admins track and resolve.
-// Solves: no proper maintenance request management.
-const maintenanceSchema = new mongoose.Schema({
-  property: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Property',
-    required: true
-  },
-  tenancy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Tenancy'
-  },
-  tenant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  landlord: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  title: { type: String, required: true, trim: true },
-  description: { type: String, required: true },
-  category: {
-    type: String,
-    enum: ['plumbing', 'electrical', 'structural', 'appliance', 'pest', 'security', 'other'],
-    default: 'other'
-  },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
-  },
-  status: {
-    type: String,
-    enum: ['open', 'in_progress', 'resolved', 'closed', 'rejected'],
-    default: 'open'
-  },
-  images: [{ url: String, uploadedAt: { type: Date, default: Date.now } }],
-  responses: [{
-    by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    message: String,
-    createdAt: { type: Date, default: Date.now }
+const MaintenanceSchema = new mongoose.Schema({
+  property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
+  tenant:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+  title:       { type: String, required: true, trim: true, maxlength: 150 },
+  description: { type: String, required: true, trim: true, maxlength: 2000 },
+
+  priority: { type: String, enum: ['low','medium','high','emergency'], default: 'medium' },
+  status:   { type: String, enum: ['open','in_progress','completed','cancelled'], default: 'open' },
+
+  images: [{
+    url:      { type: String, required: true },
+    publicId: { type: String, required: true },
   }],
-  resolvedAt: Date
+
+  technicianName:  { type: String, default: null },
+  technicianPhone: { type: String, default: null },
+  scheduledAt:     { type: Date,   default: null },
+  notes:           { type: String, default: '' },
+
+  rating: {
+    score:   { type: Number, min: 1, max: 5, default: null },
+    comment: { type: String, default: null },
+    ratedAt: { type: Date,   default: null },
+  },
+
+  completedAt: { type: Date, default: null },
 }, { timestamps: true });
 
-maintenanceSchema.index({ landlord: 1, status: 1 });
-maintenanceSchema.index({ tenant: 1, status: 1 });
-maintenanceSchema.index({ property: 1 });
+MaintenanceSchema.index({ property: 1, status: 1 });
+MaintenanceSchema.index({ tenant: 1 });
 
-module.exports = mongoose.model('MaintenanceRequest', maintenanceSchema);
+module.exports = mongoose.model('Maintenance', MaintenanceSchema);

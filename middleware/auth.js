@@ -1,117 +1,196 @@
+/**
+ * middleware/auth.js
+ * JWT authentication, role-based authorization, and resource-ownership guards.
+ * Every guard referenced across all route files is defined here.
+ */
+
+'use strict';
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Inquiry = require('../models/Inquiry');
+const Maintenance = require('../models/Maintenance');
+const Tenancy = require('../models/Tenancy');
 
-// Verify JWT Token
+// ── Helpers ───────────────────────────────────────────────────────
+const err = (res, status, message) => res.status(status).json({ success: false, message });
+
+// ── protect ───────────────────────────────────────────────────────
+/**
+ * Verifies the Bearer JWT in Authorization header.
+ * Attaches req.user on success.
+ */
 const protect = async (req, res, next) => {
   try {
-    let token;
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) return err(res, 401, 'Access denied: no token provided');
 
-    // Check authorization header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    // Ensure token exists
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized to access this route'
-      });
-    }
-
-    // Verify token
+    const token = header.split(' ')[1];
+    let decoded;
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id);
-
-      if (!req.user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-
-      // Check if user is locked
-      if (req.user.isLocked()) {
-        return res.status(423).json({
-          success: false,
-          message: 'Account temporarily locked due to too many failed login attempts'
-        });
-      }
-
-      next();
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized to access this route',
-        error: error.message
-      });
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      const msg = e.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
+      return err(res, 401, msg);
     }
+
+    const user = await User.findById(decoded.id).select('-password -refreshTokens').lean();
+    if (!user) return err(res, 401, 'User no longer exists');
+    if (user.isActive === false) return err(res, 403, 'Account is suspended');
+
+    req.user = user;
+    next();
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error in authorization',
-      error: error.message
-    });
+    next(error);
   }
 };
 
-// Check user role
-const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `User role '${req.user.role}' is not authorized to perform this action`
-      });
-    }
-    next();
-  };
-};
-
-// Refresh token verification
-const refreshToken = (req, res, next) => {
-  try {
-    const token = req.body.refreshToken;
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Refresh token required'
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid refresh token',
-      error: error.message
-    });
-  }
-};
-
-// Require completed Ghana Card + Face verification
-const requireVerified = (req, res, next) => {
-  const bio = req.user && req.user.biometric;
-  if (!bio || !bio.faceEnrolled || !bio.ghanaCardVerified) {
-    return res.status(403).json({
-      success: false,
-      message: 'Account verification required. Enroll your face and verify your Ghana Card to continue.',
-      verification: {
-        faceEnrolled: !!(bio && bio.faceEnrolled),
-        ghanaCardVerified: !!(bio && bio.ghanaCardVerified)
-      }
-    });
+// ── authorize ─────────────────────────────────────────────────────
+/**
+ * Restricts access to specific roles.
+ * Usage: authorize('admin') or authorize('landlord', 'admin')
+ */
+const authorize = (...roles) => (req, res, next) => {
+  if (!req.user) return err(res, 401, 'Not authenticated');
+  if (req.user.isCreator) return next();
+  if (!roles.includes(req.user.role)) {
+    return err(res, 403, `Role '${req.user.role}' is not authorized for this action`);
   }
   next();
+};
+
+// ── requireVerified ───────────────────────────────────────────────
+/**
+ * Requires the user to have completed identity verification
+ * (Ghana Card + face enrollment both approved).
+ */
+const requireVerified = (req, res, next) => {
+  if (!req.user) return err(res, 401, 'Not authenticated');
+  if (req.user.isCreator) return next();
+  const v = req.user.verification;
+  if (!v || v.status !== 'verified') {
+    return err(res, 403, 'Identity verification required to perform this action. Please verify your Ghana Card and face in Settings.');
+  }
+  next();
+};
+
+// ── requireInquiryParticipant ─────────────────────────────────────
+/**
+ * Ensures req.user is either the sender or the receiver of the inquiry,
+ * or an admin. Used for inquiry replies.
+ */
+const requireInquiryParticipant = async (req, res, next) => {
+  try {
+    const inquiry = await Inquiry.findById(req.params.id).lean();
+    if (!inquiry) return err(res, 404, 'Inquiry not found');
+
+    const userId = req.user._id.toString();
+    const isParticipant =
+      inquiry.sender?.toString() === userId ||
+      inquiry.recipient?.toString() === userId ||
+      req.user.role === 'admin';
+
+    if (!isParticipant) return err(res, 403, 'Not authorized to reply to this inquiry');
+
+    req.inquiry = inquiry;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── requireInquiryOwnerOrAdmin ────────────────────────────────────
+/**
+ * Ensures req.user is the inquiry sender or an admin.
+ * Used for closing/deleting inquiries.
+ */
+const requireInquiryOwnerOrAdmin = async (req, res, next) => {
+  try {
+    const inquiry = await Inquiry.findById(req.params.id).lean();
+    if (!inquiry) return err(res, 404, 'Inquiry not found');
+
+    const userId = req.user._id.toString();
+    if (inquiry.sender?.toString() !== userId && req.user.role !== 'admin') {
+      return err(res, 403, 'Only the inquiry sender or an admin can close it');
+    }
+
+    req.inquiry = inquiry;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── requireOwnerOrLandlord ────────────────────────────────────────
+/**
+ * For maintenance requests: the tenant who created it, the landlord
+ * of the property, or an admin can access it.
+ */
+const requireOwnerOrLandlord = async (req, res, next) => {
+  try {
+    // For list routes (no :id), just check role
+    if (!req.params.id) {
+      if (!['tenant', 'landlord', 'admin'].includes(req.user.role)) {
+        return err(res, 403, 'Not authorized');
+      }
+      return next();
+    }
+
+    const request = await Maintenance.findById(req.params.id)
+      .populate('property', 'landlord')
+      .lean();
+    if (!request) return err(res, 404, 'Maintenance request not found');
+
+    const userId = req.user._id.toString();
+    const isOwner = request.tenant?.toString() === userId;
+    const isLandlord = request.property?.landlord?.toString() === userId;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isOwner && !isLandlord && !isAdmin) {
+      return err(res, 403, 'Not authorized for this maintenance request');
+    }
+
+    req.maintenanceRequest = request;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── requireTenancyParticipant ─────────────────────────────────────
+/**
+ * Verifies the user is the tenant, the landlord, or an admin
+ * for a given tenancy.
+ */
+const requireTenancyParticipant = async (req, res, next) => {
+  try {
+    const tenancy = await Tenancy.findById(req.params.id)
+      .populate('property', 'landlord')
+      .lean();
+    if (!tenancy) return err(res, 404, 'Tenancy not found');
+
+    const userId = req.user._id.toString();
+    const isTenant = tenancy.tenant?.toString() === userId;
+    const isLandlord = tenancy.property?.landlord?.toString() === userId;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isTenant && !isLandlord && !isAdmin) {
+      return err(res, 403, 'Not authorized to view this tenancy');
+    }
+
+    req.tenancy = tenancy;
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
   protect,
   authorize,
-  refreshToken,
-  requireVerified
+  requireVerified,
+  requireInquiryParticipant,
+  requireInquiryOwnerOrAdmin,
+  requireOwnerOrLandlord,
+  requireTenancyParticipant,
 };

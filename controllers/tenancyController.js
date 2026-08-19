@@ -1,127 +1,116 @@
-const Tenancy = require('../models/Tenancy');
+'use strict';
+const Tenancy  = require('../models/Tenancy');
 const Property = require('../models/Property');
-const RentPayment = require('../models/RentPayment');
+const Email    = require('../utils/email');
 
-const isOwner = (val, userId) => String(val) === String(userId);
+const ok  = (res, data, s=200) => res.status(s).json({ success:true,  data });
+const err = (res, msg, s=400) => res.status(s).json({ success:false, message:msg });
 
-// Tenant requests a tenancy on a property
-exports.requestTenancy = async (req, res) => {
+exports.myTenancies = async (req, res, next) => {
   try {
-    const { propertyId, monthlyRent, dueDay, startDate, endDate, notes } = req.body;
-    const property = await Property.findById(propertyId);
-    if (!property) return res.status(404).json({ success: false, message: 'Property not found' });
-    if (property.verificationStatus !== 'approved') {
-      return res.status(400).json({ success: false, message: 'Property is not approved by admin' });
-    }
-    if (!property.isAvailable) {
-      return res.status(400).json({ success: false, message: 'Property is not available' });
-    }
+    const { status, page=1, limit=10 } = req.query;
+    const query = {};
+    if (req.user.role === 'tenant')   query.tenant   = req.user._id;
+    else if (req.user.role === 'landlord') query.landlord = req.user._id;
+    if (status) query.status = status;
+    const skip = (Number(page)-1)*Number(limit);
+    const [tenancies, total] = await Promise.all([
+      Tenancy.find(query).populate('property','name city images').populate('tenant','firstName lastName').sort('-createdAt').skip(skip).limit(Number(limit)).lean(),
+      Tenancy.countDocuments(query),
+    ]);
+    ok(res, { tenancies, total });
+  } catch(e){next(e);}
+};
+
+exports.listTenancies = async (req, res, next) => {
+  try {
+    const { status, propertyId, page=1, limit=20 } = req.query;
+    const query = req.user.role === 'admin' ? {} : { landlord: req.user._id };
+    if (status)     query.status   = status;
+    if (propertyId) query.property = propertyId;
+    const skip = (Number(page)-1)*Number(limit);
+    const [tenancies, total] = await Promise.all([
+      Tenancy.find(query).populate('property','name city').populate('tenant','firstName lastName email phone').sort('-createdAt').skip(skip).limit(Number(limit)).lean(),
+      Tenancy.countDocuments(query),
+    ]);
+    ok(res, { tenancies, total });
+  } catch(e){next(e);}
+};
+
+exports.getTenancy = async (req, res, next) => {
+  try {
+    const t = await Tenancy.findById(req.params.id)
+      .populate('property').populate('tenant','firstName lastName email phone avatar').populate('landlord','firstName lastName email').lean();
+    if (!t) return err(res,'Tenancy not found',404);
+    ok(res,{tenancy:t});
+  } catch(e){next(e);}
+};
+
+exports.requestTenancy = async (req, res, next) => {
+  try {
+    const { propertyId, message } = req.body;
+    const property = await Property.findById(propertyId).populate('landlord');
+    if (!property || property.isDeleted) return err(res,'Property not found',404);
+    if (property.status !== 'approved') return err(res,'Property is not available',400);
+
+    const existing = await Tenancy.findOne({ property:propertyId, tenant:req.user._id, status:{$in:['pending','active']} });
+    if (existing) return err(res,'You already have a pending or active tenancy for this property',409);
 
     const tenancy = await Tenancy.create({
-      property: property._id,
-      landlord: property.landlord,
-      tenant: req.user._id,
-      monthlyRent: monthlyRent || property.price,
-      dueDay: dueDay || 1,
-      startDate: startDate || new Date(),
-      endDate,
-      notes,
-      approvalStatus: 'pending',
-      status: 'active'
+      property: propertyId, tenant: req.user._id, landlord: property.landlord._id,
+      monthlyRent: property.price, message: message || '',
     });
 
-    res.status(201).json({ success: true, message: 'Tenancy requested', data: tenancy });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Error requesting tenancy', error: e.message });
-  }
+    await Email.tenancyReceived(property.landlord, req.user, property).catch(()=>{});
+    ok(res,{tenancy},201);
+  } catch(e){next(e);}
 };
 
-// Landlord approves/rejects tenancy
-exports.respondTenancy = async (req, res) => {
+exports.respondTenancy = async (req, res, next) => {
   try {
-    const { decision, notes } = req.body; // 'active' or 'rejected'
-    const tenancy = await Tenancy.findById(req.params.id).populate('property');
-    if (!tenancy) return res.status(404).json({ success: false, message: 'Tenancy not found' });
-    if (!isOwner(tenancy.landlord, req.user._id) && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-    if (!['active', 'rejected'].includes(decision)) {
-      return res.status(400).json({ success: false, message: 'decision must be active or rejected' });
-    }
+    const { decision, reason } = req.body;
+    if (!['approved','rejected'].includes(decision)) return err(res,'decision must be approved or rejected');
 
-    tenancy.approvalStatus = decision;
-    if (notes) tenancy.notes = notes;
+    const tenancy = await Tenancy.findById(req.params.id)
+      .populate('property').populate('tenant').populate('landlord');
+    if (!tenancy) return err(res,'Tenancy not found',404);
+    if (tenancy.status !== 'pending') return err(res,'Tenancy is no longer pending');
+    if (tenancy.landlord._id.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return err(res,'Not authorised',403);
+
+    tenancy.status = decision === 'approved' ? 'active' : 'rejected';
+    if (decision === 'approved') tenancy.startDate = new Date();
+    tenancy.decision = { decidedBy: req.user._id, decidedAt: new Date(), reason };
     await tenancy.save();
 
-    // Mark the property unavailable when a tenancy is activated
-    if (decision === 'active') {
-      await Property.findByIdAndUpdate(tenancy.property._id, { isAvailable: false });
-    }
-
-    res.json({ success: true, message: `Tenancy ${decision}`, data: tenancy });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Error updating tenancy', error: e.message });
-  }
+    await Email.tenancyDecision(tenancy.tenant, tenancy.property, decision, reason).catch(()=>{});
+    ok(res,{tenancy});
+  } catch(e){next(e);}
 };
 
-// End / terminate a tenancy
-exports.endTenancy = async (req, res) => {
+exports.endTenancy = async (req, res, next) => {
   try {
     const tenancy = await Tenancy.findById(req.params.id);
-    if (!tenancy) return res.status(404).json({ success: false, message: 'Tenancy not found' });
-
-    const isParty = isOwner(tenancy.landlord, req.user._id) || isOwner(tenancy.tenant, req.user._id);
-    if (!isParty && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    tenancy.status = 'ended';
-    tenancy.endDate = new Date();
+    if (!tenancy) return err(res,'Tenancy not found',404);
+    if (tenancy.status !== 'active') return err(res,'Tenancy is not active');
+    tenancy.status   = 'ended';
+    tenancy.endedAt  = new Date();
+    tenancy.endedBy  = req.user._id;
+    tenancy.endReason = req.body.reason || null;
     await tenancy.save();
-
-    // Free the property again
-    await Property.findByIdAndUpdate(tenancy.property, { isAvailable: true });
-
-    res.json({ success: true, message: 'Tenancy ended', data: tenancy });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Error ending tenancy', error: e.message });
-  }
+    ok(res,{tenancy});
+  } catch(e){next(e);}
 };
 
-// List tenancies for current user (tenant or landlord)
-exports.myTenancies = async (req, res) => {
+exports.bulkDecision = async (req, res, next) => {
   try {
-    const filter = req.user.role === 'landlord'
-      ? { landlord: req.user._id }
-      : { tenant: req.user._id };
-    if (req.query.status) filter.status = req.query.status;
-
-    const tenancies = await Tenancy.find(filter)
-      .populate('property', 'name address city price images')
-      .populate('tenant', 'firstName lastName email phone')
-      .populate('landlord', 'firstName lastName email phone')
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: tenancies });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Error fetching tenancies', error: e.message });
-  }
-};
-
-exports.getTenancy = async (req, res) => {
-  try {
-    const tenancy = await Tenancy.findById(req.params.id)
-      .populate('property')
-      .populate('tenant', 'firstName lastName email phone')
-      .populate('landlord', 'firstName lastName email phone');
-    if (!tenancy) return res.status(404).json({ success: false, message: 'Tenancy not found' });
-
-    const isParty = isOwner(tenancy.landlord._id, req.user._id) || isOwner(tenancy.tenant._id, req.user._id);
-    if (!isParty && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-    res.json({ success: true, data: tenancy });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Error', error: e.message });
-  }
+    const { ids, decision } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return err(res,'ids array required');
+    if (!['approved','rejected'].includes(decision)) return err(res,'Invalid decision');
+    await Tenancy.updateMany(
+      { _id:{$in:ids}, status:'pending' },
+      { $set:{ status: decision==='approved'?'active':'rejected', 'decision.decidedBy':req.user._id, 'decision.decidedAt':new Date() }}
+    );
+    ok(res,{message:`${ids.length} tenancies updated`});
+  } catch(e){next(e);}
 };
