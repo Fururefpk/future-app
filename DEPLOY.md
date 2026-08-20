@@ -113,7 +113,7 @@ Follow the prompts to enter admin name, email, phone, and password.
 2. Add your domain (e.g. `futurepropertyholdings.com`).
 3. Update DNS as instructed (CNAME or A record).
 4. Update `APP_URL` env var to the new domain.
-5. Update `CORS_ORIGIN` if you restricted it.
+5. Update `ALLOWED_ORIGINS` (comma-separated) to restrict allowed origins. `CORS_ORIGIN` is still supported as a legacy fallback.
 
 ---
 

@@ -100,6 +100,8 @@ LOCK_TIME=15m
 NODE_ENV=production
 APP_URL=https://futurepropertyholdings.vercel.app
 API_BASE_URL=https://futurepropertyholdings.vercel.app
+ALLOWED_ORIGINS=https://futurepropertyholdings.vercel.app
+# Legacy compatibility: CORS_ORIGIN is still read if ALLOWED_ORIGINS is not set
 CORS_ORIGIN=https://futurepropertyholdings.vercel.app
 API_VERSION=v1
 
