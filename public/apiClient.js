@@ -22,7 +22,7 @@ const BASE_URL = (
   (typeof process !== 'undefined' && process.env?.VITE_API_URL) ||
   (typeof window !== 'undefined' && window.__FPH_API_URL__) ||
   ((typeof window !== 'undefined' && /localhost|127/.test(window.location.hostname))
-    ? 'http://localhost:427/api/v1'
+    ? 'http://localhost:5001/api/v1'
     : `${window.location.origin}/api/v1`)
 );
 

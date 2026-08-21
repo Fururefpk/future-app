@@ -25,6 +25,15 @@ describe('Health & static routes', () => {
     expect(res.body.status).toBe('OK');
   });
 
+  it('GET /api returns landing page data', async () => {
+    const res = await request(app).get('/api');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      success: true,
+      message: 'Landing page data',
+    });
+  });
+
   it('GET / returns the index.html page', async () => {
     const res = await request(app).get('/');
     expect(res.status).toBe(200);

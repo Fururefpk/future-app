@@ -13,6 +13,11 @@ const ctrl = require('../controllers/rentController');
 const { protect, authorize } = require('../middleware/auth');
 
 // All rent routes require authentication
+// Public: Paystack initialization and webhook must be callable without a session
+router.post('/invoices/:id/paystack/initialize', ctrl.initializePaystackPayment);
+router.post('/paystack/webhook', ctrl.handlePaystackWebhook);
+
+// All other rent routes require authentication
 router.use(protect);
 
 // ── Invoice — Tenant ──────────────────────────────────────────────
@@ -82,17 +87,7 @@ router.post('/invoices/:id/payments', ctrl.recordPayment);
  */
 router.get('/invoices/:id/payments', ctrl.getPaymentHistory);
 
-/**
- * POST /rent/invoices/:id/paystack/initialize
- * Initialize a Paystack checkout session for an invoice.
- */
-router.post('/invoices/:id/paystack/initialize', ctrl.initializePaystackPayment);
-
-/**
- * POST /rent/paystack/webhook
- * Receive Paystack webhook events and mark invoices as paid.
- */
-router.post('/paystack/webhook', ctrl.handlePaystackWebhook);
+// (moved above to allow public access)
 
 // ── Reminders & summaries ─────────────────────────────────────────
 

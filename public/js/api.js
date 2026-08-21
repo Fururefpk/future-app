@@ -4,7 +4,7 @@ window.FPH = window.FPH || {};
 window.FPH.api = (() => {
   const BASE = (() => {
     if (typeof window.__FPH_API_URL__ !== 'undefined' && window.__FPH_API_URL__) return window.__FPH_API_URL__;
-    if (/localhost|127/.test(location.hostname)) return 'http://localhost:427/api/v1';
+    if (/localhost|127/.test(location.hostname)) return 'http://localhost:5001/api/v1';
     return `${window.location.origin}/api/v1`;
   })();
 

@@ -6,7 +6,7 @@
 'use strict';
 
 const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const CloudinaryStorage = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 
 // ── Cloudinary config (reads from .env) ───────────────────────────
@@ -22,7 +22,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // ── Factory: build a multer instance for a given Cloudinary folder ─
 function makeUploader(folder, maxFiles = 1, allowedFormats = IMAGE_FORMATS) {
-  const storage = new CloudinaryStorage({
+  const storage = CloudinaryStorage({
     cloudinary,
     params: async (req, file) => ({
       folder: `fph/${folder}`,
