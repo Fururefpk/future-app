@@ -117,6 +117,11 @@ app.get('/health', (req, res) => res.json({
   database: getDBHealth(),
 }));
 
+app.get('/api', (req, res) => res.json({
+  success: true,
+  message: 'Landing page data',
+}));
+
 // ── Landing page API data ────────────────────────────────────────
 app.get('/api/index', async (req, res) => {
   try {

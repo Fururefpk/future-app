@@ -1,5 +1,5 @@
 'use strict';
-const Invoice  = require('../models/Invoice');
+const Invoice  = require('../models/invoice');
 const Tenancy  = require('../models/Tenancy');
 const Email    = require('../utils/email');
 const paystack = require('../utils/paystack');
