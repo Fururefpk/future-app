@@ -22,6 +22,7 @@ const compression    = require('compression');
 const rateLimit      = require('express-rate-limit');
 const mongoSanitize  = require('express-mongo-sanitize');
 const xss            = require('xss-clean');
+const path           = require('path');
 
 const { connectDB, getDBHealth } = require('./config/database');
 const seedCreator       = require('./utils/seedCreator');
@@ -51,7 +52,8 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+// Support both ALLOWED_ORIGINS and legacy CORS_ORIGIN env var (comma-separated)
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || '')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
@@ -83,6 +85,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ── Compression ───────────────────────────────────────────────────
 app.use(compression());
 
+// ── Serve frontend static files (index.html, app.js, assets)
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
 // ── Sanitisation (NoSQL injection + XSS) ─────────────────────────
 app.use(mongoSanitize());
 app.use(xss());
@@ -104,11 +110,41 @@ app.use(rateLimit({
 // ── Health check ──────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({
   success: true,
+  status: 'OK',
   uptime: process.uptime(),
   timestamp: new Date().toISOString(),
   environment: process.env.NODE_ENV || 'development',
   database: getDBHealth(),
 }));
+
+// ── Landing page API data ────────────────────────────────────────
+app.get('/api/index', async (req, res) => {
+  try {
+    const Property = require('./models/Property');
+
+    const properties = await Property.find({
+      featured: true,
+      status: 'approved',
+      isDeleted: false,
+    })
+      .select('name description address city price rooms bathrooms propertyType images')
+      .limit(8)
+      .sort({ approvedAt: -1 }) // newest first
+      .lean();
+
+    res.json({
+      success: true,
+      message: 'Featured properties loaded',
+      data: properties,
+    });
+  } catch (err) {
+    console.error('Failed to fetch featured properties:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to load properties',
+    });
+  }
+});
 
 // ── API routes ────────────────────────────────────────────────────
 const API = '/api/v1';
@@ -167,22 +203,51 @@ app.use((err, req, res, next) => {
 });
 
 // ── Database + server bootstrap ───────────────────────────────────
-if (process.env.SERVERLESS !== '1') {
-  const PORT = process.env.PORT || 427;
+if (process.env.SERVERLESS !== '1' && process.env.NODE_ENV !== 'test') {
+  const BASE_PORT = parseInt(process.env.PORT, 10) || 6403;
+  const MAX_PORT_ATTEMPTS = 5;
+
   connectDB()
     .then(async () => {
       await seedCreator();
-      app.listen(PORT, () =>
-        console.log(`🚀 FPH API running on http://localhost:${PORT}${API}`),
-      );
+
+      // Try to listen on the desired port; if it's in use, try the next one.
+      const tryListen = (port, attemptsLeft) => {
+        const server = app.listen(port, () => {
+          console.log(`🚀 FPH API running on http://localhost:${port}${API}`);
+        });
+
+        server.on('error', (err) => {
+          if (err.code === 'EADDRINUSE') {
+            console.error(`Port ${port} is already in use.`);
+            server.close?.();
+            if (attemptsLeft > 0) {
+              const nextPort = port + 1;
+              console.log(`Trying port ${nextPort}... (${attemptsLeft - 1} attempts left)`);
+              // small delay before retrying to avoid tight loop
+              setTimeout(() => tryListen(nextPort, attemptsLeft - 1), 250);
+            } else {
+              console.error('No available ports found; exiting.');
+              process.exit(1);
+            }
+          } else {
+            console.error('Server error:', err);
+            process.exit(1);
+          }
+        });
+      };
+
+      tryListen(BASE_PORT, MAX_PORT_ATTEMPTS);
     })
     .catch((err) => {
       console.error('Failed to start server:', err.message);
       process.exit(1);
     });
-  
-} else {
+
+} else if (process.env.SERVERLESS === '1') {
   // Serverless: connect lazily on first request
   connectDB().catch(console.error);
+} else {
+  // In test environment we avoid opening a DB connection to keep tests fast
 }
   module.exports = app;
