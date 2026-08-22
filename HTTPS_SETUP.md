@@ -144,12 +144,12 @@ Once certificates are in place:
 
 2. **You should see:**
    ```
-   ✓ HTTPS Server running on https://localhost:5000
+   ✓ HTTPS Server running on https://localhost:5003
    ```
 
 3. **Test the endpoint:**
    ```bash
-   curl -k https://localhost:5000/health
+   curl -k https://localhost:5003/health
    ```
    The `-k` flag ignores certificate validation (needed for self-signed certs)
 
@@ -189,7 +189,7 @@ When using self-signed certificates, browsers will show a security warning:
 2. **Generate certificates** using that method
 3. **Update .env:** Set `USE_HTTPS=true`
 4. **Restart server:** Run `npm run dev`
-5. **Test:** Visit `https://localhost:5000/health`
+5. **Test:** Visit `https://localhost:5003/health`
 
 Your backend API architecture is production-ready for HTTPS! 🔐
 

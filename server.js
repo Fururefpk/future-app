@@ -21,7 +21,7 @@ const morgan         = require('morgan');
 const compression    = require('compression');
 const rateLimit      = require('express-rate-limit');
 const mongoSanitize  = require('express-mongo-sanitize');
-const xss            = require('xss-clean');
+const { xss }        = require('express-xss-sanitizer');
 const path           = require('path');
 
 const { connectDB, getDBHealth } = require('./config/database');
@@ -209,7 +209,7 @@ app.use((err, req, res, next) => {
 
 // ── Database + server bootstrap ───────────────────────────────────
 if (process.env.SERVERLESS !== '1' && process.env.NODE_ENV !== 'test') {
-  const BASE_PORT = parseInt(process.env.PORT, 10) || 6403;
+  const BASE_PORT = parseInt(process.env.PORT, 10) || 5004;
   const MAX_PORT_ATTEMPTS = 5;
 
   connectDB()

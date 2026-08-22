@@ -112,8 +112,8 @@ cp .env.example .env
 ### 3. Start the backend
 ```bash
 npm run dev
-# Server starts at http://localhost:5000
-# API available at http://localhost:5000/api/v1
+# Server starts at http://localhost:5003
+# API available at http://localhost:5003/api/v1
 ```
 
 ### 4. Open the frontend
@@ -211,7 +211,7 @@ Full API reference: see individual `routes/*.js` files.
 - Refresh tokens stored **hashed** in MongoDB
 - Rate limiting on all auth endpoints
 - MongoDB query sanitisation (`express-mongo-sanitize`)
-- XSS cleaning (`xss-clean`)
+- XSS sanitisation (`express-xss-sanitizer`)
 - Security headers (`helmet`)
 - CORS restricted to configured origins
 

@@ -147,7 +147,7 @@ exports.initializePaystackPayment = async (req,res,next) => {
       amount: Math.round(Number(amount) * 100),
       reference,
       invoiceId,
-      callbackUrl: callbackUrl || `${process.env.API_BASE_URL || 'http://localhost:5000/api/v1'}/rent/paystack/webhook`,
+      callbackUrl: callbackUrl || `${process.env.API_BASE_URL || 'http://localhost:5003/api/v1'}/rent/paystack/webhook`,
     });
 
     ok(res, {

@@ -13,9 +13,9 @@ SSL_CERT_PATH=./ssl/certificate.pem
 USE_HTTPS=false                    # Currently disabled for development
 
 # CORS Configuration  
-CORS_ORIGIN=https://localhost:5000
+CORS_ORIGIN=https://localhost:5003
 CORS_CREDENTIALS=true
-API_BASE_URL=https://localhost:5000/api/v1
+API_BASE_URL=https://localhost:5003/api/v1
 ```
 
 ### Server Architecture
@@ -24,12 +24,12 @@ Your `server.js` implements intelligent protocol handling:
 
 1. **HTTPS Mode** (`USE_HTTPS=true`):
    - Loads SSL certificates from configured paths
-   - Serves on `https://localhost:5000` with encryption
+   - Serves on `https://localhost:5003` with encryption
    - Requires valid certificate files
 
 2. **HTTP Fallback** (current):
    - Automatic fallback if certificates are invalid
-   - Serves on `http://localhost:5000` unencrypted
+   - Serves on `http://localhost:5003` unencrypted
    - Perfect for development/testing
 
 ### Files Created
@@ -95,10 +95,10 @@ npm run dev
 ### Test HTTPS Endpoint
 ```bash
 # With valid certificates:
-curl https://localhost:5000/health
+curl https://localhost:5003/health
 
 # If using self-signed certs (development):
-curl -k https://localhost:5000/health
+curl -k https://localhost:5003/health
 ```
 
 ---
@@ -108,8 +108,8 @@ curl -k https://localhost:5000/health
 ### 1. Updated `.env` File
 - ✅ Set `SSL_KEY_PATH=./ssl/private-key.pem`
 - ✅ Set `SSL_CERT_PATH=./ssl/certificate.pem`  
-- ✅ Changed `CORS_ORIGIN=https://localhost:5000` (was http)
-- ✅ Added `API_BASE_URL=https://localhost:5000/api/v1`
+- ✅ Changed `CORS_ORIGIN=https://localhost:5003` (was http)
+- ✅ Added `API_BASE_URL=https://localhost:5003/api/v1`
 - ✅ Set `USE_HTTPS=false` (development mode)
 
 ### 2. Created SSL Directory

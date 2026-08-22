@@ -152,15 +152,15 @@ cp .env.example .env
 ```bash
 npm run dev
 ```
-Runs on: http://localhost:5000
+Runs on: http://localhost:5003
 
 ### 4. Test Endpoints
 ```bash
 # Health check
-curl http://localhost:5000/health
+curl http://localhost:5003/health
 
 # Register
-curl -X POST http://localhost:5000/api/v1/auth/register \
+curl -X POST http://localhost:5003/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "firstName":"John",
@@ -171,7 +171,7 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
   }'
 
 # Login
-curl -X POST http://localhost:5000/api/v1/auth/login \
+curl -X POST http://localhost:5003/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email":"john@example.com",
@@ -428,7 +428,7 @@ git push heroku main
 ### Option 4: Docker (Any Cloud)
 ```bash
 docker build -t future-app .
-docker run -p 5000:5000 --env-file .env future-app
+docker run -p 5003:5003 --env-file .env future-app
 ```
 
 ---

@@ -59,7 +59,7 @@ Edit `.env` with your configuration (see [Environment Variables](#environment-va
 npm run dev
 ```
 
-Server will start on `http://localhost:5000`
+Server will start on `http://localhost:5003`
 
 #### 5. Start Production Server
 ```bash
@@ -424,7 +424,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```env
 # ============ APPLICATION ============
 NODE_ENV=production
-PORT=5000
+PORT=5003
 HOST=0.0.0.0
 API_BASE_URL=https://yourdomain.com/api/v1
 
@@ -506,11 +506,11 @@ RUN npm ci --only=production
 COPY . .
 
 # Expose port
-EXPOSE 5000
+EXPOSE 5003
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "require('http').get('http://localhost:5003/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Start application
 CMD ["npm", "start"]
@@ -524,7 +524,7 @@ services:
   app:
     build: .
     ports:
-      - "5000:5000"
+      - "5003:5003"
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/future_properties
@@ -938,7 +938,7 @@ Solution:
 
 ```bash
 # Health endpoint
-curl http://localhost:5000/health
+curl http://localhost:5003/health
 
 # Expected response
 {

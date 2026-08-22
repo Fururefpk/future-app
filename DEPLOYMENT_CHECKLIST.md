@@ -345,7 +345,7 @@ docker-compose up -d
 docker-compose logs -f app
 
 # Monitoring
-curl http://localhost:5000/health
+curl http://localhost:5003/health
 # Should return JSON with status: OK
 ```
 
