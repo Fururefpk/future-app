@@ -1,243 +1,179 @@
+'use strict';
 const Property = require('../models/Property');
+const Inquiry  = require('../models/Inquiry');
+const { deleteCloudinaryImage } = require('../middleware/upload');
 
-// @desc    Get all properties
-// @route   GET /api/v1/properties
-// @access  Public
-exports.getAllProperties = async (req, res) => {
+const ok  = (res, data, status = 200) => res.status(status).json({ success: true, data });
+const err = (res, msg, status = 400) => res.status(status).json({ success: false, message: msg });
+
+// ── Get all (with search + filters + pagination) ───────────────
+exports.getAllProperties = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, city, type, minPrice, maxPrice } = req.query;
+    const { city, type, minPrice, maxPrice, beds, baths, search, sort, page = 1, limit = 12 } = req.query;
+    const query = { status: 'approved', isDeleted: false };
 
-    let query = { isAvailable: true, verificationStatus: 'approved' };
+    if (city)     query.city         = new RegExp(city, 'i');
+    if (type)     query.propertyType = type;
+    if (minPrice || maxPrice) query.price = {};
+    if (minPrice) query.price.$gte = Number(minPrice);
+    if (maxPrice) query.price.$lte = Number(maxPrice);
+    if (beds)     query.rooms       = { $gte: Number(beds) };
+    if (baths)    query.bathrooms   = { $gte: Number(baths) };
+    if (search)   query.$text       = { $search: search };
 
-    if (city) query.city = city;
-    if (type) query.propertyType = type;
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
-    }
+    const sortMap = { price_asc:'-featured price', price_desc:'-featured -price', newest:'-featured -createdAt', oldest:'createdAt' };
+    const sortStr = sortMap[sort] || '-featured -createdAt';
 
-    const properties = await Property.find(query)
-      .populate('landlord', 'firstName lastName phone email')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .sort({ createdAt: -1 });
+    const skip  = (Number(page) - 1) * Number(limit);
+    const [properties, total] = await Promise.all([
+      Property.find(query).sort(sortStr).skip(skip).limit(Number(limit)).populate('landlord','firstName lastName avatar').lean(),
+      Property.countDocuments(query),
+    ]);
 
-    const total = await Property.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      data: properties,
-      pagination: {
-        currentPage: Number(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching properties',
-      error: error.message
-    });
-  }
+    ok(res, { properties, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { next(e); }
 };
 
-// @desc    Get property by ID
-// @route   GET /api/v1/properties/:id
-// @access  Public
-exports.getPropertyById = async (req, res) => {
+// ── Featured ───────────────────────────────────────────────────
+exports.getFeaturedProperties = async (req, res, next) => {
   try {
-    const property = await Property.findById(req.params.id)
-      .populate('landlord', 'firstName lastName phone email profileImage');
-
-    if (!property) {
-      return res.status(404).json({
-        success: false,
-        message: 'Property not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: property
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching property',
-      error: error.message
-    });
-  }
+    const properties = await Property.find({ status:'approved', featured:true, isDeleted:false })
+      .sort('-updatedAt').limit(8).populate('landlord','firstName lastName').lean();
+    ok(res, { properties });
+  } catch (e) { next(e); }
 };
 
-// @desc    Create new property (Landlord only)
-// @route   POST /api/v1/properties
-// @access  Private
-exports.createProperty = async (req, res) => {
+// ── Available cities ───────────────────────────────────────────
+exports.getAvailableCities = async (req, res, next) => {
   try {
-    // Check if user is landlord
-    if (req.user.role !== 'landlord') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only landlords can create properties'
-      });
-    }
-
-    // Enforce Ghana Card + face verification before listing (anti-fake-listing safeguard)
-    const bio = req.user.biometric || {};
-    if (!bio.faceEnrolled || !bio.ghanaCardVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Verification required: enroll your face and verify your Ghana Card before listing a property.'
-      });
-    }
-
-    const { name, description, address, city, price, rooms, bathrooms, propertyType, images } = req.body;
-
-    if (!name || !address || !city || !price || !propertyType) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields'
-      });
-    }
-
-    const property = new Property({
-      name,
-      description,
-      address,
-      city,
-      price,
-      rooms,
-      bathrooms,
-      propertyType,
-      images,
-      landlord: req.user._id,
-      isAvailable: true
-    });
-
-    await property.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Property created successfully',
-      data: property
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error creating property',
-      error: error.message
-    });
-  }
+    const cities = await Property.distinct('city', { status:'approved', isDeleted:false });
+    ok(res, { cities: cities.sort() });
+  } catch (e) { next(e); }
 };
 
-// @desc    Update property
-// @route   PUT /api/v1/properties/:id
-// @access  Private
-exports.updateProperty = async (req, res) => {
+// ── Single property ────────────────────────────────────────────
+exports.getPropertyById = async (req, res, next) => {
   try {
-    let property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({
-        success: false,
-        message: 'Property not found'
-      });
-    }
-
-    // Check ownership
-    if (property.landlord.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this property'
-      });
-    }
-
-    // Update allowed fields
-    const { name, description, address, city, price, rooms, bathrooms, images, isAvailable } = req.body;
-
-    if (name) property.name = name;
-    if (description) property.description = description;
-    if (address) property.address = address;
-    if (city) property.city = city;
-    if (price) property.price = price;
-    if (rooms) property.rooms = rooms;
-    if (bathrooms) property.bathrooms = bathrooms;
-    if (images) property.images = images;
-    if (isAvailable !== undefined) property.isAvailable = isAvailable;
-
-    property.updatedAt = new Date();
-    await property.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Property updated successfully',
-      data: property
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error updating property',
-      error: error.message
-    });
-  }
+    const property = await Property.findOne({ _id: req.params.id, isDeleted: false })
+      .populate('landlord','firstName lastName avatar phone').lean();
+    if (!property) return err(res, 'Property not found', 404);
+    await Property.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } });
+    ok(res, { property });
+  } catch (e) { next(e); }
 };
 
-// @desc    Delete property
-// @route   DELETE /api/v1/properties/:id
-// @access  Private
-exports.deleteProperty = async (req, res) => {
+// ── Landlord's properties ──────────────────────────────────────
+exports.getLandlordProperties = async (req, res, next) => {
+  try {
+    const query = { landlord: req.params.userId, isDeleted: false };
+    if (!req.user || (req.user._id.toString() !== req.params.userId && req.user.role !== 'admin'))
+      query.status = 'approved';
+    const properties = await Property.find(query).sort('-createdAt').lean();
+    ok(res, { properties });
+  } catch (e) { next(e); }
+};
+
+// ── Create ─────────────────────────────────────────────────────
+exports.createProperty = async (req, res, next) => {
+  try {
+    const { name, address, city, region, price, propertyType, rooms, bathrooms, description, amenities } = req.body;
+    if (!name || !address || !city || !price) return err(res, 'name, address, city, price are required');
+
+    const images = (req.files || []).map(f => ({ url: f.path, publicId: f.filename }));
+    const property = await Property.create({
+      name, address, city, region, price: Number(price),
+      propertyType: propertyType || 'apartment',
+      rooms: Number(rooms) || 1, bathrooms: Number(bathrooms) || 1,
+      description, amenities: amenities ? JSON.parse(amenities) : [],
+      images, landlord: req.user._id,
+    });
+    ok(res, { property }, 201);
+  } catch (e) { next(e); }
+};
+
+// ── Update ─────────────────────────────────────────────────────
+exports.updateProperty = async (req, res, next) => {
   try {
     const property = await Property.findById(req.params.id);
+    if (!property || property.isDeleted) return err(res, 'Property not found', 404);
+    if (property.landlord.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return err(res, 'Not authorised', 403);
 
-    if (!property) {
-      return res.status(404).json({
-        success: false,
-        message: 'Property not found'
-      });
-    }
+    const allowed = ['name','address','city','region','price','propertyType','rooms','bathrooms','description','amenities'];
+    allowed.forEach(k => { if (req.body[k] !== undefined) property[k] = req.body[k]; });
 
-    // Check ownership
-    if (property.landlord.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this property'
-      });
-    }
+    const newImages = (req.files || []).map(f => ({ url: f.path, publicId: f.filename }));
+    property.images.push(...newImages);
+    if (property.status !== 'pending') property.status = 'pending'; // re-review on edit
 
-    await Property.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Property deleted successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting property',
-      error: error.message
-    });
-  }
+    await property.save();
+    ok(res, { property });
+  } catch (e) { next(e); }
 };
 
-// @desc    Get landlord's properties
-// @route   GET /api/v1/properties/user/:userId
-// @access  Public
-exports.getLandlordProperties = async (req, res) => {
+// ── Delete ─────────────────────────────────────────────────────
+exports.deleteProperty = async (req, res, next) => {
   try {
-    const properties = await Property.find({ landlord: req.params.userId })
-      .populate('landlord', 'firstName lastName phone email');
+    const property = await Property.findById(req.params.id);
+    if (!property) return err(res, 'Property not found', 404);
+    if (property.landlord.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return err(res, 'Not authorised', 403);
+    property.isDeleted = true;
+    await property.save();
+    ok(res, { message: 'Property deleted' });
+  } catch (e) { next(e); }
+};
 
-    res.status(200).json({
-      success: true,
-      data: properties
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching properties',
-      error: error.message
-    });
-  }
+// ── Remove image ───────────────────────────────────────────────
+exports.removeImage = async (req, res, next) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return err(res, 'Property not found', 404);
+    if (property.landlord.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return err(res, 'Not authorised', 403);
+
+    const { publicId } = req.body;
+    const img = property.images.find(i => i.publicId === publicId);
+    if (img) await deleteCloudinaryImage(publicId);
+    property.images = property.images.filter(i => i.publicId !== publicId);
+    await property.save();
+    ok(res, { property });
+  } catch (e) { next(e); }
+};
+
+// ── Toggle featured ────────────────────────────────────────────
+exports.toggleFeatured = async (req, res, next) => {
+  try {
+    const property = await Property.findByIdAndUpdate(
+      req.params.id, [{ $set: { featured: { $not: '$featured' } } }], { new: true });
+    if (!property) return err(res, 'Property not found', 404);
+    ok(res, { property });
+  } catch (e) { next(e); }
+};
+
+// ── Stats ──────────────────────────────────────────────────────
+exports.getPropertyStats = async (req, res, next) => {
+  try {
+    const property = await Property.findById(req.params.id).lean();
+    if (!property) return err(res, 'Property not found', 404);
+    if (property.landlord.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return err(res, 'Not authorised', 403);
+    const inquiries = await Inquiry.countDocuments({ property: req.params.id });
+    ok(res, { viewCount: property.viewCount, inquiries });
+  } catch (e) { next(e); }
+};
+
+// ── Property inquiries ─────────────────────────────────────────
+exports.getPropertyInquiries = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const [inquiries, total] = await Promise.all([
+      Inquiry.find({ property: req.params.id })
+        .populate('sender','firstName lastName avatar')
+        .sort('-updatedAt').skip(skip).limit(Number(limit)).lean(),
+      Inquiry.countDocuments({ property: req.params.id }),
+    ]);
+    ok(res, { inquiries, total });
+  } catch (e) { next(e); }
 };

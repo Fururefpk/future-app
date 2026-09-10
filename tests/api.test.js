@@ -1,4 +1,5 @@
 const request = require('supertest');
+const mongoose = require('mongoose');
 
 // Set required env vars before loading the app
 process.env.JWT_SECRET = 'test-jwt-secret';
@@ -6,9 +7,16 @@ process.env.REFRESH_TOKEN_SECRET = 'test-refresh-secret';
 process.env.JWT_EXPIRE = '15m';
 process.env.REFRESH_TOKEN_EXPIRE = '7d';
 process.env.NODE_ENV = 'test';
-// Omit MONGODB_URI intentionally — tests run without a live DB
+// Omit MONGODB_URI intentionally — tests run without a live DB.
+// Disable Mongoose buffering so queries fail fast instead of hanging 10s.
+mongoose.set('bufferCommands', false);
+mongoose.set('bufferTimeoutMS', 1000);
 
 const app = require('../server');
+
+afterAll(async () => {
+  await mongoose.disconnect().catch(() => {});
+});
 
 describe('Health & static routes', () => {
   it('GET /health returns 200', async () => {

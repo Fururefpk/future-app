@@ -1,57 +1,35 @@
+'use strict';
 const mongoose = require('mongoose');
 
-// Links a tenant to a property under a landlord with lease terms.
-// Solves: weak landlord-tenant trust, poor property status updates, central administration.
-const tenancySchema = new mongoose.Schema({
-  property: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Property',
-    required: true
-  },
-  landlord: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  tenant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  monthlyRent: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  // Day of the month rent is due (1-28)
-  dueDay: {
-    type: Number,
-    default: 1,
-    min: 1,
-    max: 28
-  },
-  startDate: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  endDate: Date,
+const TenancySchema = new mongoose.Schema({
+  property:    { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
+  tenant:      { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+  landlord:    { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+  monthlyRent: { type: Number, required: true, min: 0 },
+  startDate:   { type: Date, default: null },
+  endDate:     { type: Date, default: null },
+
   status: {
     type: String,
-    enum: ['active', 'ended', 'terminated'],
-    default: 'active'
+    enum: ['pending','approved','rejected','active','ended'],
+    default: 'pending',
   },
-  // Lifecycle: tenant requests, landlord approves, then becomes active
-  approvalStatus: {
-    type: String,
-    enum: ['pending', 'active', 'rejected'],
-    default: 'pending'
+
+  message: { type: String, trim: true, maxlength: 500, default: '' }, // tenant's request message
+
+  decision: {
+    decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    decidedAt: { type: Date, default: null },
+    reason:    { type: String, default: null },
   },
-  notes: String
+
+  endedBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  endedAt:    { type: Date, default: null },
+  endReason:  { type: String, default: null },
 }, { timestamps: true });
 
-tenancySchema.index({ tenant: 1, status: 1 });
-tenancySchema.index({ landlord: 1, status: 1 });
-tenancySchema.index({ property: 1 });
+TenancySchema.index({ tenant: 1, status: 1 });
+TenancySchema.index({ landlord: 1, status: 1 });
+TenancySchema.index({ property: 1 });
 
-module.exports = mongoose.model('Tenancy', tenancySchema);
+module.exports = mongoose.model('Tenancy', TenancySchema);

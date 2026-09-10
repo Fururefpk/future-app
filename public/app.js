@@ -1,847 +1,234 @@
-/* Future Property Holdings — frontend integration with the Node/Express backend.
- * Provides: API client, auth (JWT + refresh), role-aware dashboard, live data wiring.
- * Loaded after the inline marketing script in index.html, so it overrides
- *   window.handleLogin / handleRegister / applyForProperty / contactLandlord
- * to talk to the real REST API instead of localStorage.
+'use strict';
+window.FPH = window.FPH || {};
+
+/**
+ * app.js
+ * App bootstrap for the auth-only homepage. The public marketing
+ * landing page (hero, property browsing, footer, etc.) has been
+ * removed — the site now opens directly to the Sign In / Create
+ * Account screen, and moves straight into the dashboard on success.
  */
-(function () {
-  'use strict';
+window.FPH.app = (() => {
+  const I = name => FPH.icons?.get(name) || '';
+  let _initialized = false;
 
-  const API_BASE = '/api/v1';
-  const STORAGE_KEY = 'fph_session';
+  /* ── Bootstrap ─────────────────────────────────────────── */
+  async function init() {
+    if (_initialized) return;
+    _initialized = true;
 
-  // ── AUTH STATE ──────────────────────────────────────────────────────────────
-  const Auth = {
-    get session() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
-      catch { return null; }
-    },
-    set session(s) {
-      if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-      else localStorage.removeItem(STORAGE_KEY);
-    },
-    get user()         { return this.session ? this.session.user : null; },
-    get accessToken()  { return this.session ? this.session.accessToken : null; },
-    get refreshToken() { return this.session ? this.session.refreshToken : null; },
-    isAuthed()         { return !!this.accessToken; }
-  };
+    _injectIcons();
+    FPH.faceAuth.loadModels().catch(() => {});
 
-  // ── API CLIENT ──────────────────────────────────────────────────────────────
-  async function api(path, { method = 'GET', body, auth = true, retry = true } = {}) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (auth && Auth.accessToken) headers.Authorization = 'Bearer ' + Auth.accessToken;
-
-    let res;
-    try {
-      res = await fetch(API_BASE + path, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined
-      });
-    } catch (e) {
-      throw new Error('Network error: ' + e.message);
+    // OAuth callback (Google/Facebook redirect back to us with a token)
+    if (location.search.includes('token=') || location.search.includes('error=')) {
+      try {
+        const d = await FPH.socialLogin.handleCallback();
+        if (d?.success) { _afterLogin(); return; }
+      } catch (e) { FPH.toast.error(e.message); }
     }
 
-    // Try to refresh access token once on 401
-    if (res.status === 401 && auth && retry && Auth.refreshToken) {
-      const ok = await tryRefresh();
-      if (ok) return api(path, { method, body, auth, retry: false });
-      Auth.session = null;
-      updateNavAuth();
-    }
-
-    let data;
-    try { data = await res.json(); } catch { data = {}; }
-    if (!res.ok || data.success === false) {
-      const msg = data.message || ('Request failed (' + res.status + ')');
-      const err = new Error(msg);
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-    return data;
-  }
-
-  async function tryRefresh() {
-    try {
-      const r = await fetch(API_BASE + '/auth/refresh-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: Auth.refreshToken })
-      });
-      const j = await r.json();
-      if (!r.ok || !j.success) return false;
-      Auth.session = { ...Auth.session, accessToken: j.data.accessToken };
-      return true;
-    } catch { return false; }
-  }
-
-  // ── NAV AUTH SWAP ───────────────────────────────────────────────────────────
-  function updateNavAuth() {
-    const u = Auth.user;
-    const desktop = document.getElementById('nav-cta');
-    const mobile  = document.getElementById('nav-cta-mobile');
-    if (!desktop || !mobile) return;
-    if (u) {
-      const initials = ((u.firstName || '?')[0] + (u.lastName || '')[0]).toUpperCase();
-      desktop.innerHTML =
-        '<button class="btn btn-outline" onclick="showPage(\'dashboard\')" title="' + u.email + '">' +
-          '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue2),var(--teal));color:#fff;font-size:.75rem;font-weight:700;margin-right:6px">' + initials + '</span>' +
-          'Dashboard' +
-        '</button>' +
-        '<button class="btn btn-primary" onclick="logout()">Logout</button>';
-      mobile.innerHTML =
-        '<button class="btn btn-outline" style="flex:1" onclick="showPage(\'dashboard\');toggleMobileMenu()">Dashboard</button>' +
-        '<button class="btn btn-primary" style="flex:1" onclick="logout()">Logout</button>';
+    const { Session } = FPH.storage;
+    if (Session.accessToken && Session.user) {
+      _afterLogin();
     } else {
-      desktop.innerHTML =
-        '<button class="btn btn-outline" onclick="openModal(\'login\')">Login</button>' +
-        '<button class="btn btn-primary" onclick="openModal(\'register\')">Get Started</button>';
-      mobile.innerHTML =
-        '<button class="btn btn-outline" style="flex:1" onclick="openModal(\'login\')">Login</button>' +
-        '<button class="btn btn-primary" style="flex:1" onclick="openModal(\'register\')">Get Started</button>';
+      showLanding();
+    }
+
+    window.addEventListener('fph:session-expired', () => {
+      FPH.toast.warning('Session expired. Please sign in again.');
+      showLanding();
+    });
+    window.addEventListener('fph:logout', showLanding);
+  }
+
+  function _injectIcons() {
+    const map = {
+      authLogoIcon:    'building',
+      headerBrandIcon: 'building',
+      notifBtnIcon:    'bell',       logoutIcon:      'log-out',
+      menuToggleIcon:  'menu',       mobileMenuIcon:  'menu',
+      propDetailCloseIcon: 'close',  propCloseIcon:   'close',
+      invoiceCloseIcon:'close',      payCloseIcon:    'close',
+      maintCloseIcon:  'close',      inqCloseIcon:    'close',
+      threadCloseIcon: 'close',      biometricCloseIcon: 'close',
+      chatSendIcon:    'send',       passkeyBtnIcon:  'passkey',
+      faceLoginIcon:   'face',       googleIcon:      'google',
+    };
+    Object.entries(map).forEach(([id, icon]) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = I(icon);
+    });
+
+    const mobileBtn = document.getElementById('mobileMenuBtn');
+    if (mobileBtn) {
+      const mq = window.matchMedia('(max-width:768px)');
+      const toggle = () => { mobileBtn.style.display = mq.matches ? 'flex' : 'none'; };
+      mq.addListener(toggle); toggle();
+    }
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+      const mq = window.matchMedia('(max-width:768px)');
+      const toggle = () => { menuToggle.style.display = mq.matches ? 'flex' : 'none'; };
+      mq.addListener(toggle); toggle();
     }
   }
 
-  // ── REAL LOGIN / REGISTER / LOGOUT ──────────────────────────────────────────
+  /* ── Homepage = Auth screen ───────────────────────────────
+     There is no separate marketing landing page anymore — the
+     site opens directly into the sign-in / create-account card. */
+  function showLanding() {
+    document.getElementById('header').classList.remove('visible');
+    document.getElementById('dashboard').style.display = 'none';
+    openAuth('login');
+  }
+
+  /* ── Auth ─────────────────────────────────────────────── */
+  function openAuth(tab = 'login') {
+    document.getElementById('authOverlay').classList.add('active');
+    switchAuthTab(tab);
+  }
+
+  function closeAuth() {
+    document.getElementById('authOverlay').classList.remove('active');
+  }
+
+  function switchAuthTab(tab) {
+    document.getElementById('loginTab')?.classList.toggle('active', tab === 'login');
+    document.getElementById('registerTab')?.classList.toggle('active', tab === 'register');
+    document.getElementById('loginForm').style.display    = tab === 'login'    ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    const titles = {
+      login:    ['Sign in to your account',  'Welcome back. Enter your credentials to continue.'],
+      register: ['Create your account',       'Just the basics. Verify your identity from Settings after sign-up.'],
+    };
+    const [t, s] = titles[tab] || titles.login;
+    const titleEl    = document.getElementById('authTitle');
+    const subtitleEl = document.getElementById('authSubtitle');
+    if (titleEl)    titleEl.textContent    = t;
+    if (subtitleEl) subtitleEl.textContent = s;
+  }
+
   async function handleLogin() {
-    const email = (document.getElementById('login-email').value || '').trim();
-    const password = document.getElementById('login-pass').value;
-    if (!email || !password) return showToast('Please fill in all fields', 'error');
+    const email    = document.getElementById('loginEmail')?.value?.trim();
+    const password = document.getElementById('loginPassword')?.value;
+    if (!email || !password) { FPH.toast.error('Please enter your email and password.'); return; }
+    _setLoading('loginBtn', true, 'Signing in…');
     try {
-      const r = await api('/auth/login', { method: 'POST', body: { email, password }, auth: false });
-      Auth.session = r.data;
-      updateNavAuth();
-      closeModal();
-      showToast('Welcome back, ' + (r.data.user.firstName || email.split('@')[0]) + '!', 'success');
-      showPage('dashboard');
-    } catch (e) {
-      showToast(e.message || 'Login failed', 'error');
-    }
+      const d = await FPH.auth.login({ email, password });
+      FPH.analytics.loginSuccess('email');
+      FPH.toast.success(d._demo ? 'Signed in (demo mode — backend not connected)' : 'Welcome back!');
+      closeAuth();
+      _afterLogin();
+    } catch (e) { FPH.toast.error(e.message); }
+    finally { _setLoading('loginBtn', false, 'Sign In'); }
   }
 
   async function handleRegister() {
-    const firstName = (document.getElementById('reg-fname').value || '').trim();
-    const lastName  = (document.getElementById('reg-lname').value || '').trim();
-    const email     = (document.getElementById('reg-email').value || '').trim();
-    const phone     = (document.getElementById('reg-phone').value || '').trim();
-    const password  = document.getElementById('reg-pass').value;
-    const role = (document.querySelector('.role-btn.active')?.dataset?.role) || 'tenant';
-
-    if (!firstName || !lastName || !email || !phone || !password) {
-      return showToast('Please fill in all fields', 'error');
-    }
-    if (password.length < 8) return showToast('Password must be at least 8 characters', 'error');
-    if (!/^(\+233|0)\d{9}$/.test(phone)) {
-      return showToast('Phone must be a Ghana number (+233XXXXXXXXX or 0XXXXXXXXX)', 'error');
-    }
-
-    try {
-      const r = await api('/auth/register', {
-        method: 'POST',
-        body: { firstName, lastName, email, phone, password, role },
-        auth: false
+    const payload = {
+      role:       document.getElementById('registerRole')?.value,
+      firstName:  document.getElementById('registerFirstName')?.value?.trim(),
+      lastName:   document.getElementById('registerLastName')?.value?.trim(),
+      email:      document.getElementById('registerEmail')?.value?.trim(),
+      phone:      document.getElementById('registerPhone')?.value?.trim(),
+      password:   document.getElementById('registerPassword')?.value,
+    };
+    const { valid, errors } = FPH.validation.validate(payload, FPH.validation.schemas.register);
+    if (!valid) {
+      Object.entries(errors).forEach(([f, msg]) => {
+        const errEl = document.getElementById(`register${f.charAt(0).toUpperCase()+f.slice(1)}Err`);
+        if (errEl) { errEl.textContent = msg; errEl.classList.add('visible'); }
+        const inputEl = document.getElementById(`register${f.charAt(0).toUpperCase()+f.slice(1)}`);
+        if (inputEl) inputEl.classList.add('error');
       });
-      Auth.session = r.data;
-      updateNavAuth();
-      closeModal();
-      showToast('Welcome, ' + firstName + '! Your account is ready.', 'success');
-      showPage('dashboard');
-    } catch (e) {
-      showToast(e.message || 'Registration failed', 'error');
-    }
-  }
-
-  async function logout() {
-    try { await api('/auth/logout', { method: 'POST' }); } catch (_) {}
-    Auth.session = null;
-    updateNavAuth();
-    showToast('Signed out', 'success');
-    showPage('home');
-  }
-
-  // ── DASHBOARD ───────────────────────────────────────────────────────────────
-  const DASH_NAV = {
-    tenant: [
-      { id: 'overview',    label: 'Overview',     icon: 'home' },
-      { id: 'tenancies',   label: 'My Tenancies', icon: 'key' },
-      { id: 'rent',        label: 'Rent & Invoices', icon: 'cash' },
-      { id: 'maintenance', label: 'Maintenance',  icon: 'wrench' },
-      { id: 'inquiries',   label: 'Inquiries',    icon: 'chat' },
-      { id: 'profile',     label: 'Profile',      icon: 'user' }
-    ],
-    landlord: [
-      { id: 'overview',    label: 'Overview',     icon: 'home' },
-      { id: 'listings',    label: 'My Listings',  icon: 'building' },
-      { id: 'tenancies',   label: 'Tenancies',    icon: 'key' },
-      { id: 'rent',        label: 'Rent & Invoices', icon: 'cash' },
-      { id: 'maintenance', label: 'Maintenance',  icon: 'wrench' },
-      { id: 'inquiries',   label: 'Inquiries',    icon: 'chat' },
-      { id: 'profile',     label: 'Profile',      icon: 'user' }
-    ],
-    admin: [
-      { id: 'overview',    label: 'Overview',     icon: 'home' },
-      { id: 'pending',     label: 'Pending Properties', icon: 'building' },
-      { id: 'users',       label: 'Users',        icon: 'user' },
-      { id: 'profile',     label: 'Profile',      icon: 'user' }
-    ]
-  };
-
-  const ICONS = {
-    home:     '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>',
-    key:      '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/></svg>',
-    cash:     '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.077 2.353 1.229V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.077-2.354-1.229V5z" clip-rule="evenodd"/></svg>',
-    wrench:   '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17a4 4 0 015.343 5.343l4.142 4.142a1 1 0 01-1.414 1.414L15.417 9.93a4 4 0 01-5.343-5.343 1 1 0 011.414-1.414L13 4.586a2 2 0 102.586 2.586L14.17 5.756a1 1 0 01-2.68-2.586z" clip-rule="evenodd"/></svg>',
-    chat:     '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-4.083-.98L2 17l1.338-3.123A6.795 6.795 0 012 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>',
-    user:     '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>',
-    building: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011-1h10a1 1 0 011 1v17h-3v-4a1 1 0 00-1-1H8a1 1 0 00-1 1v4H4V2zm3 2h2v2H7V4zm0 4h2v2H7V8zm4-4h2v2h-2V4zm0 4h2v2h-2V8z" clip-rule="evenodd"/></svg>'
-  };
-
-  let currentDashTab = 'overview';
-
-  function renderDashShell() {
-    const u = Auth.user;
-    if (!u) { showPage('home'); openModal('login'); return; }
-    const role = u.role || 'tenant';
-    const items = DASH_NAV[role] || DASH_NAV.tenant;
-
-    document.getElementById('dash-avatar').textContent =
-      ((u.firstName || '?')[0] + (u.lastName || '')[0]).toUpperCase();
-    document.getElementById('dash-user-name').textContent =
-      (u.firstName || '') + ' ' + (u.lastName || '');
-    document.getElementById('dash-user-role').textContent = role;
-
-    const nav = document.getElementById('dash-nav');
-    nav.innerHTML = items.map(i =>
-      '<button class="dash-nav-item' + (i.id === currentDashTab ? ' active' : '') + '" onclick="dashGo(\'' + i.id + '\')">' +
-      (ICONS[i.icon] || '') + i.label +
-      '</button>'
-    ).join('');
-    if (!items.find(i => i.id === currentDashTab)) currentDashTab = 'overview';
-    renderDashTab(currentDashTab);
-  }
-
-  function dashGo(tab) {
-    currentDashTab = tab;
-    renderDashShell();
-  }
-
-  function renderDashTab(tab) {
-    const main = document.getElementById('dash-main');
-    main.innerHTML = '<div class="dash-empty">Loading...</div>';
-    const u = Auth.user;
-    const role = u.role || 'tenant';
-    const handler = (Panels[role] && Panels[role][tab]) || Panels.common[tab] || Panels.common.notFound;
-    Promise.resolve(handler(main)).catch(e => {
-      main.innerHTML = '<div class="dash-card"><div class="dash-h">Error</div><div class="dash-sub">' + escapeHtml(e.message) + '</div></div>';
-    });
-  }
-
-  // ── PANELS ──────────────────────────────────────────────────────────────────
-  const Panels = { tenant: {}, landlord: {}, admin: {}, common: {} };
-
-  Panels.common.notFound = (m) => {
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">Not available</div><div class="dash-sub">This section is not available for your role.</div></div>';
-  };
-
-  Panels.common.profile = async (m) => {
-    const u = Auth.user;
-    const verified = u.biometric || {};
-    m.innerHTML =
-      '<div class="dash-card">' +
-        '<div class="dash-h">Profile</div>' +
-        '<div class="dash-sub">Your account details and verification status.</div>' +
-        '<div class="dash-row" style="margin-bottom:14px">' +
-          field('First name', 'pf-fname', u.firstName) +
-          field('Last name',  'pf-lname', u.lastName) +
-        '</div>' +
-        '<div class="dash-row" style="margin-bottom:14px">' +
-          field('Email', 'pf-email', u.email, 'email', true) +
-          field('Phone', 'pf-phone', u.phone) +
-        '</div>' +
-        '<button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>' +
-      '</div>' +
-      '<div class="dash-card">' +
-        '<div class="dash-h">Verification</div>' +
-        '<div class="dash-sub">Verified accounts can list properties, request tenancies, and contact landlords.</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' +
-          verifyTile('Face Recognition', !!verified.faceEnrolled, 'initFaceEnrollment()') +
-          verifyTile('Ghana Card', !!verified.ghanaCardVerified, 'initGhanaCardCapture()') +
-        '</div>' +
-      '</div>';
-  };
-
-  function field(label, id, val, type = 'text', readonly = false) {
-    return '<div class="form-group">' +
-      '<label>' + label + '</label>' +
-      '<input id="' + id + '" type="' + type + '" value="' + escapeAttr(val || '') + '"' + (readonly ? ' readonly' : '') + '>' +
-      '</div>';
-  }
-  function verifyTile(name, ok, action) {
-    return '<div style="padding:14px;border:1px solid var(--gray200);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">' +
-      '<div><div style="font-weight:600;color:var(--navy)">' + name + '</div>' +
-      '<div style="font-size:.78rem;margin-top:2px"><span class="dash-pill ' + (ok ? 'pill-green' : 'pill-amber') + '">' + (ok ? 'Verified' : 'Not verified') + '</span></div></div>' +
-      (ok ? '' : '<button class="btn btn-primary" style="padding:8px 14px;font-size:.82rem" onclick="' + action + '">Verify</button>') +
-      '</div>';
-  }
-
-  async function saveProfile() {
-    try {
-      const body = {
-        firstName: document.getElementById('pf-fname').value.trim(),
-        lastName:  document.getElementById('pf-lname').value.trim(),
-        phone:     document.getElementById('pf-phone').value.trim()
-      };
-      const r = await api('/users/profile', { method: 'PUT', body });
-      Auth.session = { ...Auth.session, user: r.data };
-      updateNavAuth();
-      renderDashShell();
-      showToast('Profile updated', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  // ── TENANT PANELS ───────────────────────────────────────────────────────────
-  Panels.tenant.overview = async (m) => {
-    const [t, r, q, x] = await Promise.allSettled([
-      api('/tenancies/me'), api('/rent/me'), api('/inquiries/me'), api('/maintenance/me')
-    ]);
-    const v = (s, fb) => s.status === 'fulfilled' ? (s.value.data || []).length : (fb || 0);
-    m.innerHTML =
-      '<div class="dash-h" style="margin-bottom:6px">Welcome back, ' + (Auth.user.firstName || '') + '!</div>' +
-      '<div class="dash-sub">Quick view of your renting activity.</div>' +
-      '<div class="dash-stats">' +
-        stat(v(t), 'Tenancies') +
-        stat(v(r), 'Invoices') +
-        stat(v(q), 'Inquiries') +
-        stat(v(x), 'Maintenance') +
-      '</div>' +
-      '<div class="dash-card"><div class="dash-h" style="font-size:1.1rem">Get started</div>' +
-        '<div class="dash-sub">Browse verified properties and apply or send an inquiry.</div>' +
-        '<button class="btn btn-primary" onclick="showPage(\'properties\')">Browse Properties</button>' +
-      '</div>';
-  };
-
-  Panels.tenant.tenancies = async (m) => {
-    const r = await api('/tenancies/me');
-    const list = r.data || [];
-    if (!list.length) return emptyState(m, 'No tenancies yet', 'Apply to a property to start a tenancy request.');
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">My Tenancies</div>' +
-      table(['Property', 'Rent', 'Status', 'Approval', 'Actions'], list.map(t => [
-        (t.property && t.property.name) || '\u2014',
-        'GH\u20B5' + (t.monthlyRent || 0).toLocaleString() + '/mo',
-        pill(t.status === 'active' ? 'green' : 'gray', t.status),
-        pill(t.approvalStatus === 'active' ? 'green' : t.approvalStatus === 'pending' ? 'amber' : 'red', t.approvalStatus),
-        t.status !== 'ended'
-          ? '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="endTenancy(\'' + t._id + '\')">End</button>'
-          : '\u2014'
-      ])) + '</div>';
-  };
-
-  Panels.tenant.rent = async (m) => {
-    const r = await api('/rent/me');
-    const list = r.data || [];
-    if (!list.length) return emptyState(m, 'No invoices yet', 'When your landlord generates an invoice, it will appear here.');
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">Rent & Invoices</div>' +
-      table(['Period', 'Amount', 'Paid', 'Due', 'Status'], list.map(i => [
-        i.periodLabel,
-        'GH\u20B5' + (i.amount || 0).toLocaleString(),
-        'GH\u20B5' + (i.amountPaid || 0).toLocaleString(),
-        i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '\u2014',
-        pill(i.status === 'paid' ? 'green' : i.status === 'overdue' ? 'red' : i.status === 'partial' ? 'amber' : 'blue', i.status)
-      ])) + '</div>';
-  };
-
-  Panels.tenant.maintenance = async (m) => {
-    const r = await api('/maintenance/me');
-    const list = r.data || [];
-    m.innerHTML = '<div class="dash-card">' +
-      '<div class="dash-h">Maintenance Requests</div>' +
-      '<div class="dash-sub">Report issues for your active rental.</div>' +
-      '<button class="btn btn-primary" onclick="newMaintenance()">+ New Request</button>' +
-      '</div>' +
-      (list.length
-        ? '<div class="dash-card">' +
-          table(['Title', 'Category', 'Priority', 'Status', 'Created'], list.map(x => [
-            escapeHtml(x.title || ''),
-            x.category || 'general',
-            x.priority || 'normal',
-            pill(x.status === 'resolved' ? 'green' : x.status === 'open' ? 'amber' : 'blue', x.status),
-            new Date(x.createdAt).toLocaleDateString()
-          ])) + '</div>'
-        : '');
-  };
-
-  async function newMaintenance() {
-    const t = await api('/tenancies/me?status=active').catch(() => ({ data: [] }));
-    const active = (t.data || []).filter(x => x.approvalStatus === 'active');
-    if (!active.length) return showToast('You need an active tenancy to file maintenance', 'error');
-    const title = prompt('Issue title:'); if (!title) return;
-    const description = prompt('Describe the issue:'); if (!description) return;
-    try {
-      await api('/maintenance', { method: 'POST', body: { tenancyId: active[0]._id, title, description, category: 'general', priority: 'normal' } });
-      showToast('Maintenance request submitted', 'success');
-      renderDashTab('maintenance');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  Panels.tenant.inquiries = async (m) => {
-    const r = await api('/inquiries/me');
-    const list = r.data || [];
-    if (!list.length) return emptyState(m, 'No inquiries yet', 'Use Contact Landlord on a property card to start a conversation.');
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">My Inquiries</div>' +
-      table(['Property', 'Subject', 'Status', 'Updated'], list.map(q => [
-        (q.property && q.property.name) || '\u2014',
-        escapeHtml(q.subject || '(no subject)'),
-        pill(q.status === 'replied' ? 'green' : q.status === 'closed' ? 'gray' : 'amber', q.status),
-        new Date(q.updatedAt || q.createdAt).toLocaleString()
-      ])) + '</div>';
-  };
-
-  // ── LANDLORD PANELS ─────────────────────────────────────────────────────────
-  Panels.landlord.overview = async (m) => {
-    const me = Auth.user._id || Auth.user.id;
-    const [props, t, r, x, q] = await Promise.allSettled([
-      api('/properties/user/' + me, { auth: false }),
-      api('/tenancies/me'), api('/rent/me'), api('/maintenance/me'), api('/inquiries/me')
-    ]);
-    const v = (s) => s.status === 'fulfilled' ? (s.value.data || []).length : 0;
-    m.innerHTML =
-      '<div class="dash-h" style="margin-bottom:6px">Welcome, ' + (Auth.user.firstName || 'Landlord') + '!</div>' +
-      '<div class="dash-sub">Manage your properties, tenants and revenue.</div>' +
-      '<div class="dash-stats">' +
-        stat(v(props), 'Listings') + stat(v(t), 'Tenancies') + stat(v(r), 'Invoices') +
-        stat(v(q), 'Inquiries') + stat(v(x), 'Maintenance') +
-      '</div>';
-  };
-
-  Panels.landlord.listings = async (m) => {
-    const me = Auth.user._id || Auth.user.id;
-    const r = await api('/properties/user/' + me, { auth: false });
-    const list = r.data || [];
-    m.innerHTML = '<div class="dash-card">' +
-      '<div class="dash-h">My Listings</div>' +
-      '<div class="dash-sub">Listings need admin approval before tenants can apply.</div>' +
-      '<button class="btn btn-primary" onclick="newListing()">+ Add Property</button>' +
-      '</div>' +
-      (list.length
-        ? '<div class="dash-card">' +
-          table(['Name', 'City', 'Price', 'Status', 'Available'], list.map(p => [
-            escapeHtml(p.name), p.city,
-            'GH\u20B5' + (p.price || 0).toLocaleString(),
-            pill(p.verificationStatus === 'approved' ? 'green' : p.verificationStatus === 'pending' ? 'amber' : 'red', p.verificationStatus),
-            p.isAvailable ? pill('green', 'Yes') : pill('gray', 'No')
-          ])) + '</div>'
-        : emptyHtml('No listings yet', 'Click Add Property to create your first listing.'));
-  };
-
-  async function newListing() {
-    const name = prompt('Property name (e.g. 3-Bed Executive Apartment):'); if (!name) return;
-    const address = prompt('Address:'); if (!address) return;
-    const city = prompt('City (Accra, Kumasi, Tema, ...):', 'Accra'); if (!city) return;
-    const price = Number(prompt('Monthly rent in GH\u20B5 (number):'));
-    if (!price || price <= 0) return showToast('Invalid price', 'error');
-    const propertyType = prompt('Type (apartment / house / studio / office / commercial):', 'apartment') || 'apartment';
-    const rooms = Number(prompt('Number of rooms:', '2')) || 1;
-    const bathrooms = Number(prompt('Number of bathrooms:', '1')) || 1;
-    try {
-      await api('/properties', { method: 'POST', body: { name, address, city, price, propertyType, rooms, bathrooms } });
-      showToast('Listing created \u2014 pending admin approval', 'success');
-      renderDashTab('listings');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  Panels.landlord.tenancies = async (m) => {
-    const r = await api('/tenancies/me');
-    const list = r.data || [];
-    if (!list.length) return emptyState(m, 'No tenancies yet', 'When tenants apply to your listings, requests will appear here.');
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">Tenancy Requests</div>' +
-      table(['Tenant', 'Property', 'Rent', 'Approval', 'Actions'], list.map(t => [
-        ((t.tenant && (t.tenant.firstName + ' ' + t.tenant.lastName)) || '\u2014'),
-        (t.property && t.property.name) || '\u2014',
-        'GH\u20B5' + (t.monthlyRent || 0).toLocaleString(),
-        pill(t.approvalStatus === 'active' ? 'green' : t.approvalStatus === 'pending' ? 'amber' : 'red', t.approvalStatus),
-        t.approvalStatus === 'pending'
-          ? '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="decideTenancy(\'' + t._id + '\',\'active\')">Approve</button> ' +
-            '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="decideTenancy(\'' + t._id + '\',\'rejected\')">Reject</button>'
-          : t.status !== 'ended'
-            ? '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="generateInvoice(\'' + t._id + '\')">Invoice</button>'
-            : '\u2014'
-      ])) + '</div>';
-  };
-
-  Panels.landlord.rent = Panels.tenant.rent;
-  Panels.landlord.maintenance = Panels.tenant.maintenance;
-  Panels.landlord.inquiries = Panels.tenant.inquiries;
-
-  async function decideTenancy(id, decision) {
-    try {
-      await api('/tenancies/' + id + '/decision', { method: 'PATCH', body: { decision } });
-      showToast('Tenancy ' + decision, 'success');
-      renderDashTab('tenancies');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-  async function endTenancy(id) {
-    if (!confirm('End this tenancy?')) return;
-    try {
-      await api('/tenancies/' + id + '/end', { method: 'PATCH' });
-      showToast('Tenancy ended', 'success');
-      renderDashTab('tenancies');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-  async function generateInvoice(tenancyId) {
-    try {
-      await api('/rent/invoices', { method: 'POST', body: { tenancyId } });
-      showToast('Invoice generated', 'success');
-      renderDashTab('rent');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  // ── ADMIN PANELS ────────────────────────────────────────────────────────────
-  Panels.admin.overview = async (m) => {
-    const r = await api('/admin/dashboard');
-    const d = r.data || {};
-    m.innerHTML =
-      '<div class="dash-h" style="margin-bottom:6px">Admin Dashboard</div>' +
-      '<div class="dash-sub">Platform-wide statistics.</div>' +
-      '<div class="dash-stats">' +
-        stat(d.users || 0, 'Total Users') + stat(d.tenants || 0, 'Tenants') +
-        stat(d.landlords || 0, 'Landlords') +
-        stat((d.properties && d.properties.total) || 0, 'Properties') +
-        stat((d.properties && d.properties.pending) || 0, 'Pending Review') +
-        stat((d.tenancies && d.tenancies.active) || 0, 'Active Tenancies') +
-        stat((d.rent && d.rent.overdueOrPartial) || 0, 'Overdue Invoices') +
-        stat((d.maintenance && d.maintenance.openOrInProgress) || 0, 'Open Tickets') +
-      '</div>';
-  };
-
-  Panels.admin.pending = async (m) => {
-    const r = await api('/admin/properties/pending');
-    const list = r.data || [];
-    if (!list.length) return emptyState(m, 'Nothing pending', 'All listings are reviewed!');
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">Pending Properties</div>' +
-      table(['Name', 'Landlord', 'City', 'Price', 'Actions'], list.map(p => [
-        escapeHtml(p.name),
-        ((p.landlord && (p.landlord.firstName + ' ' + p.landlord.lastName)) || '\u2014'),
-        p.city, 'GH\u20B5' + (p.price || 0).toLocaleString(),
-        '<button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem" onclick="reviewProp(\'' + p._id + '\',\'approved\')">Approve</button> ' +
-        '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="reviewProp(\'' + p._id + '\',\'rejected\')">Reject</button>'
-      ])) + '</div>';
-  };
-
-  Panels.admin.users = async (m) => {
-    const r = await api('/admin/users');
-    const list = r.data || [];
-    m.innerHTML = '<div class="dash-card"><div class="dash-h">Users</div>' +
-      table(['Name', 'Email', 'Role', 'Verified', 'Active', 'Actions'], list.map(u => [
-        (u.firstName || '') + ' ' + (u.lastName || ''), u.email, u.role,
-        (u.biometric && u.biometric.faceEnrolled && u.biometric.ghanaCardVerified) ? pill('green', 'Yes') : pill('amber', 'No'),
-        u.isActive ? pill('green', 'Active') : pill('gray', 'Disabled'),
-        '<button class="btn btn-outline" style="padding:6px 12px;font-size:.78rem" onclick="toggleUser(\'' + u._id + '\',' + (!u.isActive) + ')">' + (u.isActive ? 'Disable' : 'Enable') + '</button>'
-      ])) + '</div>';
-  };
-
-  async function reviewProp(id, decision) {
-    const reason = decision === 'rejected' ? prompt('Rejection reason:') || 'Did not meet requirements' : undefined;
-    try {
-      await api('/admin/properties/' + id + '/review', { method: 'PATCH', body: { decision, reason } });
-      showToast('Property ' + decision, 'success');
-      renderDashTab('pending');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-  async function toggleUser(id, isActive) {
-    try {
-      await api('/admin/users/' + id + '/active', { method: 'PATCH', body: { isActive } });
-      showToast(isActive ? 'User enabled' : 'User disabled', 'success');
-      renderDashTab('users');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  // ── HELPERS ─────────────────────────────────────────────────────────────────
-  function stat(num, label) {
-    return '<div class="dash-stat"><div class="dash-stat-num">' + num + '</div><div class="dash-stat-lbl">' + label + '</div></div>';
-  }
-  function table(cols, rows) {
-    return '<table class="dash-table"><thead><tr>' +
-      cols.map(c => '<th>' + c + '</th>').join('') +
-      '</tr></thead><tbody>' +
-      rows.map(r => '<tr>' + r.map(c => '<td>' + (c == null ? '\u2014' : c) + '</td>').join('') + '</tr>').join('') +
-      '</tbody></table>';
-  }
-  function pill(color, text) {
-    return '<span class="dash-pill pill-' + color + '">' + (text || '') + '</span>';
-  }
-  function emptyHtml(title, sub) {
-    return '<div class="dash-card"><div class="dash-empty">' +
-      '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>' +
-      '<div style="font-weight:600;color:var(--navy)">' + title + '</div>' +
-      '<div style="margin-top:6px">' + sub + '</div>' +
-      '</div></div>';
-  }
-  function emptyState(m, title, sub) { m.innerHTML = emptyHtml(title, sub); }
-  function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-  function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
-
-  // ── BACKEND-AWARE PROPERTY ACTIONS ──────────────────────────────────────────
-  async function applyForProperty(idOrMongo) {
-    if (!Auth.isAuthed()) {
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      openModal('login');
-      return showToast('Please sign in to apply', 'error');
-    }
-    if (typeof idOrMongo !== 'string' || idOrMongo.length !== 24) {
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      return showToast('Demo property \u2014 connect to a live listing to apply', 'success');
-    }
-    try {
-      await api('/tenancies', { method: 'POST', body: { propertyId: idOrMongo } });
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      showToast('Application sent. The landlord will review it shortly.', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
-  }
-
-  async function contactLandlord(idOrMongo) {
-    if (!Auth.isAuthed()) {
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      openModal('login');
-      return showToast('Please sign in to contact the landlord', 'error');
-    }
-    if (typeof idOrMongo !== 'string' || idOrMongo.length !== 24) {
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      showPage('contact');
+      FPH.toast.error('Please fix the highlighted fields.');
       return;
     }
-    const body = prompt('Message to the landlord:');
-    if (!body) return;
+    _setLoading('registerBtn', true, 'Creating account…');
     try {
-      await api('/inquiries', { method: 'POST', body: { propertyId: idOrMongo, body } });
-      if (typeof closePropertyDetail === 'function') closePropertyDetail();
-      showToast('Inquiry sent', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
+      const d = await FPH.auth.register(payload);
+      FPH.analytics.registerSuccess(payload.role);
+      FPH.toast.success(d._demo
+        ? 'Account created (demo mode). Verify your identity from Settings.'
+        : 'Account created! Verify your Ghana Card and face from Settings.');
+      closeAuth();
+      _afterLogin();
+    } catch (e) { FPH.toast.error(e.message); }
+    finally { _setLoading('registerBtn', false, 'Create Account'); }
   }
 
-  // ── LIVE PROPERTIES ─────────────────────────────────────────────────────────
-  async function loadLiveProperties() {
-    try {
-      const r = await api('/properties?limit=24', { auth: false });
-      const list = r.data || [];
-      if (!list.length) return;
-      const grid = document.getElementById('props-grid-2');
-      if (!grid) return;
-      grid.innerHTML = list.map(p => livePropCard(p)).join('');
-    } catch (_) { /* backend offline - demo cards remain */ }
+  async function handleLogout() {
+    await FPH.auth.logout();
+    FPH.notifications.stopPolling();
+    FPH.storage.Cache.clear();
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('header').classList.remove('visible');
+    showLanding();
   }
 
-  function livePropCard(p) {
-    const img = (p.images && p.images[0] && p.images[0].url) || null;
-    const beds = p.rooms || 0, baths = p.bathrooms || 1;
-    return '<div class="prop-card" data-type="' + (p.propertyType || 'apartment') + '">' +
-      '<div class="prop-img" style="background:linear-gradient(135deg,#1e3a8a,#0d9488)">' +
-        (img ? '<img class="prop-img-bg" src="' + img + '" alt="' + escapeAttr(p.name) + '" loading="lazy" referrerpolicy="no-referrer">'
-             : '<div class="prop-img-placeholder"><span style="font-size:4rem">\uD83C\uDFE0</span></div>') +
-        '<div class="prop-badge"><span class="tag tag-' + (p.isAvailable ? 'available' : 'rented') + '">' + (p.isAvailable ? 'Available' : 'Rented') + '</span></div>' +
-      '</div>' +
-      '<div class="prop-body">' +
-        '<div class="prop-title">' + escapeHtml(p.name) + '</div>' +
-        '<div class="prop-loc">' + escapeHtml(p.city) + ' \u2014 ' + escapeHtml(p.address || '') + '</div>' +
-        '<div class="prop-features">' +
-          (beds > 0 ? '<div class="prop-feat">' + beds + ' Beds</div>' : '') +
-          '<div class="prop-feat">' + baths + ' Bath' + (baths > 1 ? 's' : '') + '</div>' +
-        '</div>' +
-        '<div class="prop-footer">' +
-          '<div class="prop-price">GH\u20B5' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
-          '<button class="btn btn-primary" style="padding:8px 16px;font-size:.82rem" onclick="openLiveProperty(\'' + p._id + '\')">View Details</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+  async function handlePasskeyLogin() {
+    const email = document.getElementById('loginEmail')?.value?.trim();
+    try { await FPH.passkey.login(email); closeAuth(); _afterLogin(); }
+    catch (e) { FPH.toast.error(e.message); }
   }
 
-  async function openLiveProperty(id) {
-    try {
-      const r = await api('/properties/' + id, { auth: false });
-      const p = r.data;
-      const modal = document.getElementById('prop-modal');
-      const body = document.getElementById('prop-modal-body');
-      const img = (p.images && p.images[0] && p.images[0].url) || null;
-      const hero = img
-        ? '<img class="pd-hero" src="' + img + '" alt="' + escapeAttr(p.name) + '" referrerpolicy="no-referrer">'
-        : '<div class="pd-hero" style="background:linear-gradient(135deg,#1e3a8a,#0d9488);display:flex;align-items:center;justify-content:center"><span style="font-size:5rem">\uD83C\uDFE0</span></div>';
-      body.innerHTML = hero +
-        '<div class="pd-body">' +
-          '<div class="pd-row">' +
-            '<div><div class="pd-title">' + escapeHtml(p.name) + '</div>' +
-            '<div class="pd-loc">' + escapeHtml(p.city) + ' \u2014 ' + escapeHtml(p.address || '') + '</div></div>' +
-            '<div class="pd-price">GH\u20B5' + (p.price || 0).toLocaleString() + '<span>/mo</span></div>' +
-          '</div>' +
-          '<div><span class="tag tag-' + (p.isAvailable ? 'available' : 'rented') + '">' + (p.isAvailable ? 'Available' : 'Rented') + '</span></div>' +
-          '<div class="pd-feats">' +
-            '<div class="pd-feat"><strong>' + (p.rooms || '-') + '</strong><span>Bedrooms</span></div>' +
-            '<div class="pd-feat"><strong>' + (p.bathrooms || 1) + '</strong><span>Bathrooms</span></div>' +
-            '<div class="pd-feat"><strong>' + (p.propertyType || 'apartment') + '</strong><span>Type</span></div>' +
-          '</div>' +
-          '<p class="pd-desc">' + escapeHtml(p.description || 'A verified listing on Future Property Holdings.') + '</p>' +
-          '<div class="pd-actions">' +
-            (p.isAvailable
-              ? '<button class="btn btn-primary" onclick="applyForProperty(\'' + p._id + '\')">Apply Now</button>' +
-                '<button class="btn btn-outline" onclick="contactLandlord(\'' + p._id + '\')">Contact Landlord</button>' +
-                '<button class="btn" style="background:var(--gray100);color:var(--navy)" onclick="closePropertyDetail()">Close</button>'
-              : '<button class="btn" style="background:var(--gray100);color:var(--navy);flex:1;justify-content:center" onclick="closePropertyDetail()">Close</button>') +
-          '</div>' +
-        '</div>';
-      modal.classList.add('open');
-    } catch (e) { showToast(e.message, 'error'); }
+  function showForgotPassword() {
+    const email = prompt('Enter your email address:');
+    if (!email) return;
+    FPH.auth.forgotPassword(email)
+      .then(() => FPH.toast.success('Password reset email sent. Check your inbox.'))
+      .catch(e  => FPH.toast.error(e.message));
   }
 
-  // ── EXTRA LINKING HELPERS ───────────────────────────────────────────────────
-  function goToDashOrLogin(tab) {
-    if (!Auth.isAuthed()) {
-      openModal('login');
-      return showToast('Please sign in to continue', 'error');
-    }
-    currentDashTab = tab || 'overview';
-    showPage('dashboard');
-  }
+  /* ── After login ──────────────────────────────────────── */
+  async function _afterLogin() {
+    const user = FPH.storage.Session.user;
+    if (!user) return;
 
-  async function applyPropSearch() {
-    const q    = (document.getElementById('prop-search-q')?.value || '').trim().toLowerCase();
-    const type = document.getElementById('prop-search-type')?.value || 'all';
-    const loc  = document.getElementById('prop-search-loc')?.value || '';
-    const grid = document.getElementById('props-grid-2');
-    if (!grid) return;
+    document.getElementById('authOverlay').classList.remove('active');
+    document.getElementById('header').classList.add('visible');
+    document.getElementById('dashboard').style.display = 'block';
 
-    if (typeof window.properties === 'object' && Array.isArray(window.properties)) {
-      const filtered = window.properties.filter(p => {
-        if (type !== 'all' && p.type !== type) return false;
-        if (loc && !(p.loc || '').toLowerCase().includes(loc.toLowerCase())) return false;
-        if (q && !((p.title || '') + ' ' + (p.loc || '')).toLowerCase().includes(q)) return false;
-        return true;
-      });
-      if (typeof window.renderProps === 'function') {
-        const original = window.properties;
-        window.properties = filtered;
-        try { window.renderProps('props-grid-2', 'all'); }
-        finally { window.properties = original; }
+    const nameEl   = document.getElementById('userName');
+    const avatarEl = document.getElementById('headerAvatar');
+    const dashAvEl = document.getElementById('dashAvatar');
+    if (nameEl)   nameEl.textContent   = user.firstName || 'User';
+    if (avatarEl) avatarEl.textContent = FPH.utils.initials(user.firstName, user.lastName);
+    if (dashAvEl) dashAvEl.textContent = FPH.utils.initials(user.firstName, user.lastName);
+
+    await FPH.dashboard.init();
+    setTimeout(() => {
+      if (window.FPH?.dashboardUI) {
+        FPH.dashboardUI.renderShell();
+        const tab = FPH.dashboard.getCurrentTab();
+        FPH.dashboardUI.goTo(tab);
       }
-      if (!filtered.length) {
-        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--gray600)"><div style="font-weight:600;color:var(--navy);margin-bottom:6px">No matches</div>Try a different search term or clear filters.</div>';
-      }
-    }
+    }, 0);
 
-    try {
-      const params = new URLSearchParams();
-      if (type !== 'all') params.set('type', type);
-      const r = await api('/properties?' + params.toString(), { auth: false });
-      const list = (r.data || []).filter(p => {
-        if (loc && !((p.address || '') + ' ' + (p.city || '')).toLowerCase().includes(loc.toLowerCase())) return false;
-        if (q && !((p.name || '') + ' ' + (p.city || '') + ' ' + (p.address || '')).toLowerCase().includes(q)) return false;
-        return true;
-      });
-      if (list.length) grid.innerHTML = list.map(livePropCard).join('');
-    } catch (_) { /* backend offline */ }
+    FPH.notifications.startPolling();
+    if (window.FPH?.notificationsUI) FPH.notificationsUI.init();
+    FPH.analytics.pageView('dashboard');
+
+    const v = user.verification;
+    if (!v || v.status !== 'verified') {
+      setTimeout(() => FPH.toast.info('Complete your identity verification from Settings to unlock all features.'), 1500);
+    }
   }
 
-  // ── INFO / LEGAL / HELP MODAL ───────────────────────────────────────────────
-  const INFO_CONTENT = {
-    'help': {
-      title: 'Help Center', sub: 'Quick answers to common questions.',
-      body: '<h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Account</h3><p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Create an account, verify your Ghana Card and face, then sign in to access the dashboard.</p><h3 style="font-weight:700;color:var(--navy);margin-bottom:8px">Listings</h3><p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Landlords can list properties from their dashboard once verification is complete.</p><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Contact Support</button>'
-    },
-    'landlord-guide': {
-      title: 'Landlord Guide', sub: 'Everything you need to start earning from your property.',
-      body: '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li>Register and choose <strong>Landlord</strong> as your role.</li><li>Verify your Ghana Card and enroll your face.</li><li>Click <strong>+ Add Property</strong> from your dashboard.</li><li>Wait for admin approval (within 24h).</li><li>Approve tenancy requests, generate invoices, track payments.</li></ol><button class="btn btn-primary" onclick="closeInfoModal();openModal(\'register\')">Become a Landlord</button>'
-    },
-    'tenant-guide': {
-      title: 'Tenant Guide', sub: 'How to find and rent a verified property.',
-      body: '<ol style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li>Browse properties on the <strong>Properties</strong> page.</li><li>Click <strong>View Details</strong> then <strong>Apply Now</strong>.</li><li>Sign in or register; complete identity verification.</li><li>The landlord reviews and approves your request.</li><li>Pay rent and file maintenance from your dashboard.</li></ol><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'properties\')">Browse Properties</button>'
-    },
-    'privacy': {
-      title: 'Privacy Policy', sub: 'How we collect, use, and protect your data.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">Future Property Holdings collects only the data needed to verify your identity, list properties, and handle rent. Personal data is encrypted at rest and in transit, never sold to third parties, and is deletable on request.</p><p style="color:var(--gray600);line-height:1.7">For data subject requests, email <a href="mailto:privacy@fph.gh" style="color:var(--blue2)">privacy@fph.gh</a>.</p>'
-    },
-    'terms': {
-      title: 'Terms of Use', sub: 'The agreement between you and Future Property Holdings.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:14px">By creating an account you agree to use the platform truthfully, list only properties you have the right to rent, and pay any agreed-upon rent on time.</p><p style="color:var(--gray600);line-height:1.7">Misuse of the platform will result in account suspension and may be reported to authorities.</p>'
-    },
-    'cookies': {
-      title: 'Cookie Policy', sub: 'What we store on your device.',
-      body: '<p style="color:var(--gray600);line-height:1.7">We use essential cookies and localStorage to keep you signed in. We do not use third-party advertising trackers. Clear them from your browser settings to sign out.</p>'
-    },
-    'careers': {
-      title: 'Careers', sub: 'Join the team building the future of Ghanaian rentals.',
-      body: '<p style="color:var(--gray600);line-height:1.7;margin-bottom:18px">We hire engineers, designers, and field verification officers in Accra and Kumasi. Send your CV to <a href="mailto:careers@fph.gh" style="color:var(--blue2)">careers@fph.gh</a>.</p><button class="btn btn-primary" onclick="closeInfoModal();showPage(\'contact\')">Get in Touch</button>'
-    },
-    'reminders': {
-      title: 'Automated Reminders', sub: 'How we keep tenants and landlords on schedule.',
-      body: '<ul style="color:var(--gray600);line-height:1.8;padding-left:20px;margin-bottom:18px"><li><strong>7 days</strong> before \u2014 email reminder.</li><li><strong>3 days</strong> before \u2014 email + SMS.</li><li><strong>1 day</strong> before \u2014 final SMS.</li><li><strong>On due date</strong> \u2014 in-app notification.</li><li><strong>Overdue</strong> \u2014 daily SMS until paid.</li></ul><button class="btn btn-primary" onclick="closeInfoModal();goToDashOrLogin(\'rent\')">Open Rent Dashboard</button>'
-    },
-    'forgot-password': {
-      title: 'Reset your password', sub: 'We will email you a secure reset link.',
-      body: '<div class="form-group"><label>Email</label><input type="email" id="forgot-email" placeholder="your@email.com"></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitForgot()">Send reset link</button><p style="font-size:.78rem;color:var(--gray400);margin-top:14px;text-align:center">If an account with that email exists you will receive a reset link within a few minutes.</p>'
-    }
+  /* ── Helpers ──────────────────────────────────────────── */
+  function _setLoading(btnId, loading, text) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled    = loading;
+    btn.textContent = text;
+    btn.classList.toggle('loading', loading);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  return {
+    init, showLanding, openAuth, closeAuth, switchAuthTab,
+    handleLogin, handleRegister, handleLogout, handlePasskeyLogin,
+    showForgotPassword, _afterLogin,
   };
-
-  function openInfoModal(key) {
-    const c = INFO_CONTENT[key];
-    if (!c) return;
-    document.getElementById('info-modal-title').textContent = c.title;
-    document.getElementById('info-modal-sub').textContent = c.sub;
-    document.getElementById('info-modal-body').innerHTML = c.body;
-    document.getElementById('info-modal').classList.add('open');
-  }
-  function closeInfoModal() { document.getElementById('info-modal').classList.remove('open'); }
-  async function submitForgot() {
-    const e = document.getElementById('forgot-email')?.value || '';
-    if (!/^\S+@\S+\.\S+$/.test(e)) return showToast('Enter a valid email', 'error');
-    try {
-      await api('/auth/forgot-password', { method: 'POST', body: { email: e }, auth: false });
-    } catch (_) { /* always show success to avoid email enumeration */ }
-    closeInfoModal();
-    showToast('If that account exists, a reset link is on its way.', 'success');
-  }
-
-  // ── BOOTSTRAP ───────────────────────────────────────────────────────────────
-  window.handleLogin = handleLogin;
-  window.handleRegister = handleRegister;
-  window.logout = logout;
-  window.applyForProperty = applyForProperty;
-  window.contactLandlord = contactLandlord;
-  window.dashGo = dashGo;
-  window.saveProfile = saveProfile;
-  window.newMaintenance = newMaintenance;
-  window.newListing = newListing;
-  window.decideTenancy = decideTenancy;
-  window.endTenancy = endTenancy;
-  window.generateInvoice = generateInvoice;
-  window.reviewProp = reviewProp;
-  window.toggleUser = toggleUser;
-  window.openLiveProperty = openLiveProperty;
-  window.goToDashOrLogin = goToDashOrLogin;
-  window.applyPropSearch = applyPropSearch;
-  window.openInfoModal   = openInfoModal;
-  window.closeInfoModal  = closeInfoModal;
-  window.submitForgot    = submitForgot;
-
-  const _showPage = window.showPage;
-  window.showPage = function (page) {
-    if (page === 'dashboard' && !Auth.isAuthed()) {
-      openModal('login');
-      return showToast('Please sign in to view your dashboard', 'error');
-    }
-    if (typeof _showPage === 'function') _showPage(page);
-    if (page === 'dashboard') renderDashShell();
-    if (page === 'properties' || page === 'home') loadLiveProperties();
-  };
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    updateNavAuth();
-    if (Auth.isAuthed()) {
-      try {
-        const r = await api('/auth/me');
-        Auth.session = { ...Auth.session, user: r.data };
-        updateNavAuth();
-      } catch (_) {}
-    }
-    loadLiveProperties();
-  });
-
-  window.FPH = { api, Auth, renderDashShell };
 })();
