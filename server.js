@@ -14,6 +14,7 @@
 
 require('dotenv').config();
 
+const path           = require('path');
 const express        = require('express');
 const cors           = require('cors');
 const helmet         = require('helmet');
@@ -78,6 +79,12 @@ app.options('*', cors()); // preflight for all routes
 // ── Body parsers ──────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ── Static frontend assets ─────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // ── Compression ───────────────────────────────────────────────────
 app.use(compression());

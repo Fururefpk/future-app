@@ -9,8 +9,12 @@ const err = (res, msg, status = 400) => res.status(status).json({ success: false
 // ── Get all (with search + filters + pagination) ───────────────
 exports.getAllProperties = async (req, res, next) => {
   try {
-    const { city, type, minPrice, maxPrice, beds, baths, search, sort, page = 1, limit = 12 } = req.query;
-    const query = { status: 'approved', isDeleted: false };
+    const { city, type, minPrice, maxPrice, beds, baths, search, sort, page = 1, limit = 12, status } = req.query;
+    const query = { isDeleted: false };
+
+    const allowedStatuses = ['pending', 'approved', 'rejected'];
+    const requestedStatus = status && allowedStatuses.includes(status) ? status : 'approved';
+    query.status = requestedStatus;
 
     if (city)     query.city         = new RegExp(city, 'i');
     if (type)     query.propertyType = type;
@@ -19,7 +23,17 @@ exports.getAllProperties = async (req, res, next) => {
     if (maxPrice) query.price.$lte = Number(maxPrice);
     if (beds)     query.rooms       = { $gte: Number(beds) };
     if (baths)    query.bathrooms   = { $gte: Number(baths) };
-    if (search)   query.$text       = { $search: search };
+
+    if (search && String(search).trim()) {
+      const normalized = String(search).trim();
+      const safe = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { name: { $regex: safe, $options: 'i' } },
+        { description: { $regex: safe, $options: 'i' } },
+        { address: { $regex: safe, $options: 'i' } },
+        { city: { $regex: safe, $options: 'i' } },
+      ];
+    }
 
     const sortMap = { price_asc:'-featured price', price_desc:'-featured -price', newest:'-featured -createdAt', oldest:'createdAt' };
     const sortStr = sortMap[sort] || '-featured -createdAt';
