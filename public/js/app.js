@@ -19,14 +19,26 @@ window.FPH.app = (() => {
     if (location.search.includes('token=') || location.search.includes('error=')) {
       try {
         const d = await FPH.socialLogin.handleCallback();
-        if (d?.success) { _afterLogin(); return; }
+        if (d?.success) {
+          const target = '/dashboard.html';
+          if (window.location.pathname !== target) window.location.replace(target);
+          return;
+        }
       } catch (e) { FPH.toast.error(e.message); }
     }
 
     const { Session } = FPH.storage;
     if (Session.accessToken && Session.user) {
+      if (!window.location.pathname.endsWith('/dashboard.html') && !window.location.pathname.endsWith('/dashboard')) {
+        window.location.replace('/dashboard.html');
+        return;
+      }
       _afterLogin();
     } else {
+      if (window.location.pathname.endsWith('/dashboard.html') || window.location.pathname.endsWith('/dashboard')) {
+        window.location.replace('/');
+        return;
+      }
       showLanding();
     }
 
@@ -76,20 +88,15 @@ window.FPH.app = (() => {
 
   /* ── Landing page ──────────────────────────────────────── */
   function showLanding() {
-    document.getElementById('landingPage').classList.add('active');
-    document.getElementById('header').classList.remove('visible');
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('authOverlay').classList.remove('active');
+    const authOverlay = document.getElementById('authOverlay');
+    const header      = document.getElementById('header');
+    const dashboard   = document.getElementById('dashboard');
 
-    _animateStats();
-    _loadFeaturedProperties();
+    if (authOverlay) authOverlay.classList.add('active');
+    if (header) header.classList.remove('visible');
+    if (dashboard) dashboard.style.display = 'none';
 
-    // Filter listeners
-    const debouncedFilter = FPH.utils.debounce(applyFilters, 500);
-    ['filterSearch','filterCity','filterType','filterPrice','filterBeds'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('input', debouncedFilter);
-    });
+    switchAuthTab('login');
   }
 
   async function _animateStats() {
@@ -372,8 +379,12 @@ window.FPH.app = (() => {
     await FPH.auth.logout();
     FPH.notifications.stopPolling();
     FPH.storage.Cache.clear();
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('header').classList.remove('visible');
+    if (window.location.pathname.endsWith('/dashboard.html') || window.location.pathname.endsWith('/dashboard')) {
+      window.location.href = '/';
+      return;
+    }
+    document.getElementById('dashboard')?.style.display = 'none';
+    document.getElementById('header')?.classList.remove('visible');
     _propertiesPage = 1;
     showLanding();
   }
@@ -397,10 +408,16 @@ window.FPH.app = (() => {
     const user = FPH.storage.Session.user;
     if (!user) return;
 
-    document.getElementById('landingPage').classList.remove('active');
-    document.getElementById('authOverlay').classList.remove('active');
-    document.getElementById('header').classList.add('visible');
-    document.getElementById('dashboard').style.display = 'block';
+    if (!window.location.pathname.endsWith('/dashboard.html') && !window.location.pathname.endsWith('/dashboard')) {
+      window.location.replace('/dashboard.html');
+      return;
+    }
+
+    document.getElementById('landingPage')?.classList.remove('active');
+    document.getElementById('authOverlay')?.classList.remove('active');
+    document.getElementById('header')?.classList.add('visible');
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) dashboard.style.display = 'block';
 
     // Update header
     const nameEl   = document.getElementById('userName');
