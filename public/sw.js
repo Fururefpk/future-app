@@ -6,7 +6,7 @@
 
 // Bump this whenever the application shell changes so previously installed
 // workers cannot combine an old page or script with a new deployment.
-const CACHE_NAME    = 'fph-v4';
+const CACHE_NAME    = 'fph-v5';
 const API_CACHE     = 'fph-api-v1';
 const OFFLINE_PAGE  = '/404.html';
 
@@ -21,16 +21,18 @@ const PRECACHE_ASSETS = [
   '/js/biometric.js',
   '/js/dashboard.js',
   '/404.html',
-  'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;700&display=swap',
 ];
 
 // ── Install: pre-cache all static assets ──────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_ASSETS))
+      // A transient failure must not prevent the worker from activating.
+      .then(cache => Promise.all(PRECACHE_ASSETS.map(asset =>
+        cache.add(asset).catch(() => undefined)
+      )))
       .then(() => self.skipWaiting())
-      .catch(e => console.warn('SW precache error:', e.message))
+      .catch(e => console.warn('SW installation error:', e.message))
   );
 });
 
