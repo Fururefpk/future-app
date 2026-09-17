@@ -84,39 +84,60 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = [process.env.ALLOWED_ORIGINS, process.env.CORS_ORIGIN]
+// VERCEL_URL is set by Vercel for each deployment. Including it means a
+// deployment can call its own API before a custom-domain allowlist is updated.
+const vercelDeploymentOrigin = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : null;
+
+const ALLOWED_ORIGINS = [
+  process.env.ALLOWED_ORIGINS,
+  process.env.CORS_ORIGIN,
+  vercelDeploymentOrigin,
+]
   .filter(Boolean)
   .join(',')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
 
-const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
+const isSameOriginRequest = (origin, req) => {
+  try {
+    const parsedOrigin = new URL(origin);
+    return ['http:', 'https:'].includes(parsedOrigin.protocol)
+      && parsedOrigin.host === req.get('host');
+  } catch {
+    return false;
+  }
+};
+
+const createCorsOptions = (req, cb) => cb(null, {
+  origin: (origin, originCb) => {
+    if (!origin) return originCb(null, true);
 
     const isLocalOrigin = /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(origin);
     const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+    const isSameOrigin = isSameOriginRequest(origin, req);
 
     if (process.env.NODE_ENV === 'production') {
-      if (isAllowedOrigin) return cb(null, true);
-      return cb(new Error(`CORS: origin '${origin}' not allowed`));
+      if (isAllowedOrigin || isSameOrigin) return originCb(null, true);
+      return originCb(new Error(`CORS: origin '${origin}' not allowed`));
     }
 
-    if (isAllowedOrigin || isLocalOrigin) {
-      return cb(null, true);
+    if (isAllowedOrigin || isLocalOrigin || isSameOrigin) {
+      return originCb(null, true);
     }
 
-    cb(new Error(`CORS: origin '${origin}' not allowed`));
+    originCb(new Error(`CORS: origin '${origin}' not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key'],
-};
+});
 
-app.use(cors(corsOptions));
+app.use(cors(createCorsOptions));
 
-app.options(/.*/, cors(corsOptions)); // preflight for all routes
+app.options(/.*/, cors(createCorsOptions)); // preflight for all routes
 
 // ── Body parsers ──────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));

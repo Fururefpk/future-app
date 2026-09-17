@@ -39,6 +39,18 @@ describe('Health & static routes', () => {
 });
 
 describe('Auth routes (no DB)', () => {
+  it('allows a deployment to call its own API origin', async () => {
+    const origin = 'https://future-preview-project.vercel.app';
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .set('Host', 'future-preview-project.vercel.app')
+      .set('Origin', origin)
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.headers['access-control-allow-origin']).toBe(origin);
+  });
+
   it('POST /api/v1/auth/login returns error without body', async () => {
     const res = await request(app)
       .post('/api/v1/auth/login')
