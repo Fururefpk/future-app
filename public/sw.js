@@ -4,7 +4,9 @@
  */
 'use strict';
 
-const CACHE_NAME    = 'fph-v2';
+// Bump this whenever the application shell changes so previously installed
+// workers cannot combine an old page or script with a new deployment.
+const CACHE_NAME    = 'fph-v3';
 const API_CACHE     = 'fph-api-v1';
 const OFFLINE_PAGE  = '/404.html';
 

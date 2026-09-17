@@ -95,7 +95,10 @@ window.FPH.app = (() => {
 
     if (authOverlay) authOverlay.classList.add('active');
     if (header) header.classList.remove('visible');
-    if (dashboard) dashboard.style.display = 'none';
+    if (dashboard) {
+      dashboard.classList.remove('active');
+      dashboard.style.display = 'none';
+    }
 
     switchAuthTab('login');
   }
@@ -419,7 +422,10 @@ window.FPH.app = (() => {
     document.getElementById('authOverlay')?.classList.remove('active');
     document.getElementById('header')?.classList.add('visible');
     const dashboard = document.getElementById('dashboard');
-    if (dashboard) dashboard.style.display = 'block';
+    if (dashboard) {
+      dashboard.classList.add('active');
+      dashboard.style.display = 'block';
+    }
 
     // Update header
     const nameEl   = document.getElementById('userName');
