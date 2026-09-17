@@ -9,6 +9,6 @@ window.FPH.HeroSlideshowUIHelpers = (() => {
   function renderError(msg) { return '<div style="padding:16px;color:#ef4444;">⚠ '+esc(msg)+'</div>'; }
   function renderListItem(left, right) { return '<div class="list-item">'+left+(right?'<div>'+right+'</div>':'')+'</div>'; }
   
-  function renderDots(count,active){return Array.from({length:count},(_,i)=>'<span style="width:8px;height:8px;border-radius:50%;background:'+(i===active?'white':'rgba(255,255,255,.4)')+';cursor:pointer;display:inline-block;margin:0 3px;" onclick="FPH.heroSlideshow.goTo('+i+')"></span>').join('');}
+  function renderDots(count,active){return Array.from({length:count},(_,i)=>'<span style="width:8px;height:8px;border-radius:50%;background:'+(i===active?'white':'rgba(255,255,255,.4)')+';cursor:pointer;display:inline-block;margin:0 3px;" data-action="FPH.heroSlideshow.goTo" data-value="'+i+'"></span>').join('');}
   return { renderEmpty, renderLoading, renderError, renderListItem };
 })();

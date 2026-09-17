@@ -12,6 +12,7 @@
 
 'use strict';
 
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 
 const path           = require('path');
@@ -22,8 +23,9 @@ const morgan         = require('morgan');
 const compression    = require('compression');
 const rateLimit      = require('express-rate-limit');
 const mongoSanitize  = require('express-mongo-sanitize');
-const xss            = require('xss-clean');
+const cleanXss        = require('xss-clean/lib/xss').clean;
 
+const { validateEnvironment } = require('./config/env');
 const { connectDB, getDBHealth } = require('./config/database');
 
 // Route modules
@@ -39,42 +41,82 @@ const adminRoutes       = require('./routes/admin');
 const analyticsRoutes   = require('./routes/analytics');
 const supportRoutes     = require('./routes/support');
 
+
 // ── App ────────────────────────────────────────────────────────────
 const app = express();
+app.disable('x-powered-by');
+
+if (process.env.NODE_ENV !== 'test' && process.env.SERVERLESS !== '1') {
+  const missing = validateEnvironment(process.env);
+  if (missing.length) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
 
 // ── Trust proxy (Vercel / Render sit behind a reverse proxy) ──────
 app.set('trust proxy', 1);
 
 // ── Security headers ──────────────────────────────────────────────
+// The frontend currently uses inline event handlers extensively (onclick, onchange, etc.),
+// so the CSP must explicitly allow them while still keeping the rest of the app restricted.
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", 'data:'],
+      connectSrc: ["'self'", 'https:', 'wss:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+    },
+  },
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+const ALLOWED_ORIGINS = [process.env.ALLOWED_ORIGINS, process.env.CORS_ORIGIN]
+  .filter(Boolean)
+  .join(',')
   .split(',')
   .map(o => o.trim())
   .filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return cb(null, true);
-    if (
-      ALLOWED_ORIGINS.includes(origin) ||
-      /localhost/.test(origin) ||
-      process.env.NODE_ENV === 'development'
-    ) {
+
+    const isLocalOrigin = /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(origin);
+    const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+
+    if (process.env.NODE_ENV === 'production') {
+      if (isAllowedOrigin) return cb(null, true);
+      return cb(new Error(`CORS: origin '${origin}' not allowed`));
+    }
+
+    if (isAllowedOrigin || isLocalOrigin) {
       return cb(null, true);
     }
+
     cb(new Error(`CORS: origin '${origin}' not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key'],
-}));
+};
 
-app.options('*', cors()); // preflight for all routes
+app.use(cors(corsOptions));
+
+app.options(/.*/, cors(corsOptions)); // preflight for all routes
 
 // ── Body parsers ──────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -96,8 +138,27 @@ app.get('/dashboard.html', (req, res) => {
 app.use(compression());
 
 // ── Sanitisation (NoSQL injection + XSS) ─────────────────────────
-app.use(mongoSanitize());
-app.use(xss());
+app.use((req, res, next) => {
+  ['body', 'params', 'headers', 'query'].forEach((key) => {
+    if (req[key]) mongoSanitize.sanitize(req[key]);
+  });
+  next();
+});
+app.use((req, res, next) => {
+  const sanitize = (value) => {
+    if (typeof value === 'string') return cleanXss(value);
+    if (Array.isArray(value)) return value.map(sanitize);
+    if (value && typeof value === 'object') {
+      Object.keys(value).forEach((key) => { value[key] = sanitize(value[key]); });
+    }
+    return value;
+  };
+
+  ['body', 'params', 'query'].forEach((key) => {
+    if (req[key]) sanitize(req[key]);
+  });
+  next();
+});
 
 // ── HTTP logging ──────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
@@ -115,6 +176,7 @@ app.use(rateLimit({
 
 // ── Health check ──────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({
+  status: 'OK',
   success: true,
   uptime: process.uptime(),
   timestamp: new Date().toISOString(),
@@ -179,7 +241,7 @@ app.use((err, req, res, next) => {
 });
 
 // ── Database + server bootstrap ───────────────────────────────────
-if (process.env.SERVERLESS !== '1') {
+if (process.env.NODE_ENV !== 'test' && process.env.SERVERLESS !== '1') {
   const PORT = process.env.PORT || 5000;
   connectDB()
     .then(() => {
@@ -191,9 +253,8 @@ if (process.env.SERVERLESS !== '1') {
       console.error('Failed to start server:', err.message);
       process.exit(1);
     });
-} else {
-  // Serverless: connect lazily on first request
-  connectDB().catch(console.error);
+} else if (process.env.NODE_ENV !== 'test') {
+  // Vercel's adapter awaits connectDB before forwarding each request.
 }
 
 module.exports = app;

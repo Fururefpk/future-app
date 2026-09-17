@@ -5,10 +5,18 @@
 
 'use strict';
 
+const dns = require('dns');
 const mongoose = require('mongoose');
+
+// Fix MongoDB Atlas SRV resolution on local Node.js
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
+
 
 // ── Connection state ──────────────────────────────────────────────
 let isConnected = false;
+let hasConnectedOnce = false;
+let connectionPromise = null;
 let retryCount = 0;
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 3000;
@@ -28,6 +36,7 @@ const MONGO_OPTIONS = {
 function attachEvents() {
   mongoose.connection.on('connected', () => {
     isConnected = true;
+    hasConnectedOnce = true;
     retryCount = 0;
     console.log(`✅ MongoDB connected → ${mongoose.connection.host}/${mongoose.connection.name}`);
   });
@@ -35,7 +44,7 @@ function attachEvents() {
   mongoose.connection.on('disconnected', () => {
     isConnected = false;
     console.warn('⚠️  MongoDB disconnected');
-    if (process.env.SERVERLESS !== '1') scheduleReconnect();
+    if (hasConnectedOnce && process.env.SERVERLESS !== '1') scheduleReconnect();
   });
 
   mongoose.connection.on('error', (err) => {
@@ -73,19 +82,25 @@ function scheduleReconnect() {
 const connectDB = async () => {
   // In serverless environments, reuse an existing connection
   if (isConnected && mongoose.connection.readyState === 1) return;
+  if (connectionPromise) return connectionPromise;
 
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI environment variable is not set');
   }
 
-  try {
-    attachEvents();
-    await mongoose.connect(process.env.MONGODB_URI, MONGO_OPTIONS);
-  } catch (error) {
-    console.error('❌ Initial MongoDB connection failed:', error.message);
-    if (process.env.SERVERLESS !== '1') scheduleReconnect();
-    else throw error; // let Vercel surface the cold-start failure
-  }
+  connectionPromise = (async () => {
+    try {
+      attachEvents();
+      await mongoose.connect(process.env.MONGODB_URI, MONGO_OPTIONS);
+    } catch (error) {
+      console.error('❌ Initial MongoDB connection failed:', error.message);
+      throw error;
+    } finally {
+      connectionPromise = null;
+    }
+  })();
+
+  return connectionPromise;
 };
 
 // ── Health check ──────────────────────────────────────────────────

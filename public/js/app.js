@@ -33,6 +33,7 @@ window.FPH.app = (() => {
         window.location.replace('/dashboard.html');
         return;
       }
+      if (FPH.rentUI?.handlePaystackReturn) FPH.rentUI.handlePaystackReturn();
       _afterLogin();
     } else {
       if (window.location.pathname.endsWith('/dashboard.html') || window.location.pathname.endsWith('/dashboard')) {
@@ -167,7 +168,7 @@ window.FPH.app = (() => {
           <div class="empty-icon">${I('building')}</div>
           <div class="empty-title">Could Not Load Properties</div>
           <div class="empty-desc">Running in demo mode &mdash; no live listings available.</div>
-          <button class="btn btn-outline" onclick="FPH.app.openAuth('register')">Create Account to List</button>
+          <button class="btn btn-outline" data-action="FPH.app.openAuth" data-value="register">Create Account to List</button>
         </div>`;
       }
     }
@@ -197,8 +198,8 @@ window.FPH.app = (() => {
         </div>
       </div>
       <div class="property-card-actions">
-        <button class="btn btn-outline btn-sm" onclick="FPH.app.viewProperty('${id}')">View Details</button>
-        <button class="btn btn-primary btn-sm" onclick="FPH.app.inquireProperty('${id}','${FPH.utils.escapeAttr(p.name||'')}')">Inquire</button>
+        <button class="btn btn-outline btn-sm" data-action="FPH.app.viewProperty" data-value="${id}">View Details</button>
+        <button class="btn btn-primary btn-sm" data-action="FPH.app.inquireProperty" data-value="${id}" data-name="${FPH.utils.escapeAttr(p.name||'')}">Inquire</button>
       </div>
     </div>`;
   }
@@ -283,8 +284,8 @@ window.FPH.app = (() => {
         </div>
         ${p.description ? `<div style="margin-bottom:24px;"><h4 style="margin-bottom:12px;">About this property</h4><p style="line-height:1.8;">${FPH.utils.escapeHtml(p.description)}</p></div>` : ''}
         <div style="display:flex;gap:12px;margin-top:24px;">
-          <button class="btn btn-primary btn-lg" onclick="FPH.app.inquireProperty('${FPH.utils.escapeAttr(p._id)}','${FPH.utils.escapeAttr(p.name||'')}');closeModal('propertyDetailModal');">Send Inquiry</button>
-          <button class="btn btn-outline btn-lg" onclick="closeModal('propertyDetailModal')">Close</button>
+          <button class="btn btn-primary btn-lg" data-action="FPH.app.inquireProperty" data-value="${FPH.utils.escapeAttr(p._id)}" data-name="${FPH.utils.escapeAttr(p.name||'')}" data-target="propertyDetailModal">Send Inquiry</button>
+          <button class="btn btn-outline btn-lg" data-action="closeModal" data-value="propertyDetailModal">Close</button>
         </div>`;
       document.getElementById('propDetailTitle').textContent = p.name || 'Property Details';
     } catch (e) {
@@ -383,7 +384,8 @@ window.FPH.app = (() => {
       window.location.href = '/';
       return;
     }
-    document.getElementById('dashboard')?.style.display = 'none';
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) dashboard.style.display = 'none';
     document.getElementById('header')?.classList.remove('visible');
     _propertiesPage = 1;
     showLanding();
@@ -427,18 +429,18 @@ window.FPH.app = (() => {
     if (avatarEl) avatarEl.textContent = FPH.utils.initials(user.firstName, user.lastName);
     if (dashAvEl) dashAvEl.textContent = FPH.utils.initials(user.firstName, user.lastName);
 
-    await FPH.dashboard.init();
+    if (window.FPH?.dashboard?.init) await FPH.dashboard.init();
     setTimeout(() => {
-      if (window.FPH?.dashboardUI) {
+      if (window.FPH?.dashboardUI && window.FPH?.dashboard) {
         FPH.dashboardUI.renderShell();
         const tab = FPH.dashboard.getCurrentTab();
         FPH.dashboardUI.goTo(tab);
       }
     }, 0);
 
-    FPH.notifications.startPolling();
-    if (window.FPH?.notificationsUI) FPH.notificationsUI.init();
-    FPH.analytics.pageView('dashboard');
+    if (window.FPH?.notifications?.startPolling) FPH.notifications.startPolling();
+    if (window.FPH?.notificationsUI?.init) FPH.notificationsUI.init();
+    if (window.FPH?.analytics?.pageView) FPH.analytics.pageView('dashboard');
 
     const v = user.verification;
     if (!v || v.status !== 'verified') {

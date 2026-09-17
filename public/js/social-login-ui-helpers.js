@@ -9,6 +9,9 @@ window.FPH.SocialLoginUIHelpers = (() => {
   function renderError(msg) { return '<div style="padding:16px;color:#ef4444;">⚠ '+esc(msg)+'</div>'; }
   function renderListItem(left, right) { return '<div class="list-item">'+left+(right?'<div>'+right+'</div>':'')+'</div>'; }
   
-  function renderProviderBtn(provider){return '<button class="social-btn" onclick="FPH.socialLogin.redirect(\"'+provider+'\")">'+FPH.socialLogin.getProviderIcon(provider)+' '+FPH.socialLogin.getProviderLabel(provider)+'</button>';}
-  return { renderEmpty, renderLoading, renderError, renderListItem };
+  function renderProviderBtn(provider) {
+    return '<button class="social-btn" data-action="FPH.socialLogin.redirect" data-value="'+provider+'">'+FPH.socialLogin.getProviderIcon(provider)+' '+FPH.socialLogin.getProviderLabel(provider)+'</button>';
+  }
+
+  return { renderEmpty, renderLoading, renderError, renderListItem, renderProviderBtn };
 })();

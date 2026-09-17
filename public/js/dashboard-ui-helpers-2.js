@@ -21,12 +21,12 @@ window.FPH.dashboardUIHelpers2 = (() => {
     return `
       ${header('Inquiries','Messages and property inquiries',
         !isLandlordOrAdmin
-          ? `<button class="btn btn-primary btn-sm" onclick="FPH.chatUI.openNewModal()">${I('plus')} New Inquiry</button>`
+          ? `<button class="btn btn-primary btn-sm" data-action="FPH.chatUI.openNewModal">${I('plus')} New Inquiry</button>`
           : '')}
       ${items.length === 0
         ? empty('message-square','No Inquiries','No inquiries yet.',
             !isLandlordOrAdmin
-              ? `<button class="btn btn-primary" onclick="FPH.chatUI.openNewModal()">${I('plus')} Send an Inquiry</button>`
+              ? `<button class="btn btn-primary" data-action="FPH.chatUI.openNewModal">${I('plus')} Send an Inquiry</button>`
               : '')
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th>Subject</th><th>Property</th><th>${isLandlordOrAdmin?'From':'To'}</th><th>Status</th><th>Last Activity</th><th>Actions</th></tr></thead>
@@ -46,9 +46,9 @@ window.FPH.dashboardUIHelpers2 = (() => {
                 <td>${badge(q.status)}</td>
                 <td style="color:var(--gray-400);font-size:12px;">${ago(q.updatedAt||q.createdAt)}</td>
                 <td><div class="table-actions">
-                  <button class="btn btn-outline btn-sm" onclick="FPH.chatUI.openThread('${esc(q._id)}')">${I('message-square')} Open</button>
+                  <button class="btn btn-outline btn-sm" data-action="FPH.chatUI.openThread" data-value="${esc(q._id)}">${I('message-square')} Open</button>
                   ${q.status!=='closed'
-                    ? `<button class="btn btn-ghost btn-sm" onclick="FPH.chatUI.close('${esc(q._id)}').then(()=>FPH.dashboard.invalidate('inquiries')&&FPH.dashboardUI.goTo('inquiries'))">Close</button>`
+                    ? `<button class="btn btn-ghost btn-sm" data-action="FPH.chatUI.close" data-value="${esc(q._id)}">Close</button>`
                     : ''}
                 </div></td>
               </tr>`;
@@ -65,7 +65,7 @@ window.FPH.dashboardUIHelpers2 = (() => {
     return `
       ${header('Maintenance','Track and manage maintenance requests',
         role==='tenant'
-          ? `<button class="btn btn-primary btn-sm" onclick="FPH.maintenanceUI.openCreateModal()">${I('plus')} New Request</button>`
+          ? `<button class="btn btn-primary btn-sm" data-action="FPH.maintenanceUI.openCreateModal">${I('plus')} New Request</button>`
           : '')}
       ${items.length === 0
         ? empty('tool','No Maintenance Requests',
@@ -73,7 +73,7 @@ window.FPH.dashboardUIHelpers2 = (() => {
               ? 'Submit a request when something needs attention.'
               : 'No maintenance requests from your tenants.',
             role==='tenant'
-              ? `<button class="btn btn-primary" onclick="FPH.maintenanceUI.openCreateModal()">${I('plus')} Submit Request</button>`
+              ? `<button class="btn btn-primary" data-action="FPH.maintenanceUI.openCreateModal">${I('plus')} Submit Request</button>`
               : '')
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th>Title</th><th>Property</th><th>Priority</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
@@ -85,7 +85,7 @@ window.FPH.dashboardUIHelpers2 = (() => {
               <td style="font-size:12px;color:var(--gray-400);">${dt(x.createdAt)}</td>
               <td><div class="table-actions">
                 ${role!=='tenant'&&x.status!=='completed'&&x.status!=='cancelled'
-                  ? `<select class="form-control" style="height:32px;font-size:12px;padding:0 8px;min-width:130px;" onchange="FPH.maintenanceUI.updateStatus('${esc(x._id)}',this.value)">
+                  ? `<select class="form-control" style="height:32px;font-size:12px;padding:0 8px;min-width:130px;" data-action-change="FPH.maintenanceUI.updateStatus" data-value="${esc(x._id)}">
                       <option value="">Update status</option>
                       <option value="in_progress"${x.status==='in_progress'?' selected':''}>In Progress</option>
                       <option value="completed"${x.status==='completed'?' selected':''}>Completed</option>
@@ -93,7 +93,7 @@ window.FPH.dashboardUIHelpers2 = (() => {
                     </select>`
                   : ''}
                 ${x.status==='completed'&&role==='tenant'&&!x.rating
-                  ? `<button class="btn btn-outline btn-sm" onclick="FPH.maintenanceUI.openRateModal('${esc(x._id)}')">${I('star')} Rate</button>`
+                  ? `<button class="btn btn-outline btn-sm" data-action="FPH.maintenanceUI.openRateModal" data-value="${esc(x._id)}">${I('star')} Rate</button>`
                   : ''}
               </div></td>
             </tr>`).join('')}</tbody>
@@ -109,9 +109,9 @@ window.FPH.dashboardUIHelpers2 = (() => {
       ${header('User Management',`${total} registered users`,
         `<div class="panel-actions">
           <div class="search-bar"><span>${I('search')}</span>
-            <input type="text" class="form-control" id="userSearchInput" placeholder="Search users…" oninput="FPH.adminUI.searchUsers(this.value)" style="height:36px;">
+            <input type="text" class="form-control" id="userSearchInput" placeholder="Search users…" data-action="FPH.adminUI.searchUsers" data-target="input" style="height:36px;">
           </div>
-          <select class="form-control" style="height:36px;width:140px;" onchange="FPH.adminUI.filterUsers(this.value)">
+          <select class="form-control" style="height:36px;width:140px;" data-action-change="FPH.adminUI.filterUsers">
             <option value="">All roles</option>
             <option value="tenant">Tenants</option>
             <option value="landlord">Landlords</option>
@@ -134,9 +134,9 @@ window.FPH.dashboardUIHelpers2 = (() => {
               <td style="font-size:12px;color:var(--gray-400);">${dt(u.createdAt)}</td>
               <td><div class="table-actions">
                 ${u.isActive!==false
-                  ? `<button class="btn btn-danger btn-sm"  onclick="FPH.adminUI.toggleUser('${esc(u._id)}',false)">Suspend</button>`
-                  : `<button class="btn btn-secondary btn-sm" onclick="FPH.adminUI.toggleUser('${esc(u._id)}',true)">Activate</button>`}
-                <select class="form-control" style="height:32px;font-size:12px;padding:0 8px;min-width:120px;" onchange="FPH.adminUI.changeRole('${esc(u._id)}',this.value)">
+                  ? `<button class="btn btn-danger btn-sm" data-action="FPH.adminUI.toggleUser" data-value="${esc(u._id)}" data-name="false">Suspend</button>`
+                  : `<button class="btn btn-secondary btn-sm" data-action="FPH.adminUI.toggleUser" data-value="${esc(u._id)}" data-name="true">Activate</button>`}
+                <select class="form-control" style="height:32px;font-size:12px;padding:0 8px;min-width:120px;" data-action-change="FPH.adminUI.changeRole" data-value="${esc(u._id)}">
                   <option value="">Change role</option>
                   <option value="tenant">Tenant</option>
                   <option value="landlord">Landlord</option>
@@ -166,8 +166,8 @@ window.FPH.dashboardUIHelpers2 = (() => {
               <td style="font-weight:600;">${ghs(p.price)}</td>
               <td style="font-size:12px;color:var(--gray-400);">${dt(p.createdAt)}</td>
               <td><div class="table-actions">
-                <button class="btn btn-secondary btn-sm" onclick="FPH.adminUI.reviewProperty('${esc(p._id)}','approved')">${I('check')} Approve</button>
-                <button class="btn btn-danger btn-sm"    onclick="FPH.adminUI.reviewProperty('${esc(p._id)}','rejected')">${I('x')} Reject</button>
+                <button class="btn btn-secondary btn-sm" data-action="FPH.adminUI.reviewProperty" data-value="${esc(p._id)}" data-name="approved">${I('check')} Approve</button>
+                <button class="btn btn-danger btn-sm" data-action="FPH.adminUI.reviewProperty" data-value="${esc(p._id)}" data-name="rejected">${I('x')} Reject</button>
               </div></td>
             </tr>`).join('')}</tbody>
           </table></div>`}`;
@@ -198,9 +198,9 @@ window.FPH.dashboardUIHelpers2 = (() => {
                 </td>
                 <td style="font-size:12px;color:var(--gray-400);">${v.submittedAt?dt(v.submittedAt):'—'}</td>
                 <td><div class="table-actions">
-                  <button class="btn btn-secondary btn-sm" onclick="FPH.adminUI.reviewVerification('${esc(u._id)}','approved')">${I('check-circle')} Approve</button>
-                  <button class="btn btn-danger btn-sm"    onclick="FPH.adminUI.reviewVerification('${esc(u._id)}','rejected')">${I('x-circle')} Reject</button>
-                  <button class="btn btn-outline btn-sm"   onclick="FPH.adminUI.override('${esc(u._id)}')">Override</button>
+                  <button class="btn btn-secondary btn-sm" data-action="FPH.adminUI.reviewVerification" data-value="${esc(u._id)}" data-name="approved">${I('check-circle')} Approve</button>
+                  <button class="btn btn-danger btn-sm" data-action="FPH.adminUI.reviewVerification" data-value="${esc(u._id)}" data-name="rejected">${I('x-circle')} Reject</button>
+                  <button class="btn btn-outline btn-sm" data-action="FPH.adminUI.override" data-value="${esc(u._id)}">Override</button>
                 </div></td>
               </tr>`;
             }).join('')}</tbody>

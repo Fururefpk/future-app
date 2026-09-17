@@ -61,7 +61,7 @@ window.FPH.dashboardUI = (() => {
 
   function _navItem(tab, current) {
     const unread = tab === 'inquiries' ? FPH.notifications.getCount() : 0;
-    return `<button class="dash-nav-item${tab === current ? ' active' : ''}" data-tab="${tab}" onclick="FPH.dashboardUI.goTo('${tab}')">
+    return `<button class="dash-nav-item${tab === current ? ' active' : ''}" data-tab="${tab}" data-action="FPH.dashboardUI.goTo" data-value="${tab}">
       ${I(TAB_ICONS[tab] || 'list')}
       <span>${TAB_LABELS[tab] || tab}</span>
       ${unread ? `<span class="badge badge-danger nav-badge" style="padding:2px 6px;font-size:10px;">${unread}</span>` : ''}

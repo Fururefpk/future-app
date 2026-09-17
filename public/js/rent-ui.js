@@ -53,6 +53,29 @@ window.FPH.rentUI = (() => {
     document.getElementById('payModal').classList.add('active');
   }
 
+  async function startPaystack(invoiceId) {
+    try {
+      const result = await FPH.rent.initializePaystack(invoiceId);
+      const url = result?.data?.authorizationUrl;
+      if (!url) throw new Error('Paystack checkout URL was not returned.');
+      window.location.assign(url);
+    } catch (e) { FPH.toast.error(e.message); }
+  }
+
+  async function handlePaystackReturn() {
+    const reference = new URLSearchParams(window.location.search).get('reference');
+    if (!reference || !reference.startsWith('FPH-')) return;
+    const invoiceId = reference.split('-')[1];
+    if (!invoiceId) return;
+    try {
+      await FPH.rent.verifyPaystack(invoiceId, reference);
+      FPH.toast.success('Paystack payment verified successfully.', 'Payment Confirmed');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      FPH.dashboard.invalidate('rent');
+      FPH.dashboardUI.goTo('rent');
+    } catch (e) { FPH.toast.error(`Payment verification failed: ${e.message}`); }
+  }
+
   async function submitPayment() {
     const invoiceId = document.getElementById('pay-invoiceId')?.value;
     const payload   = {
@@ -82,5 +105,5 @@ window.FPH.rentUI = (() => {
     } catch (e) { FPH.toast.error(e.message); }
   }
 
-  return { openGenerateModal, submitGenerate, openPayModal, submitPayment, voidInvoice };
+  return { openGenerateModal, submitGenerate, openPayModal, submitPayment, startPaystack, handlePaystackReturn, voidInvoice };
 })();

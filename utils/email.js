@@ -1,11 +1,21 @@
 'use strict';
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const FROM         = process.env.EMAIL_FROM   || 'Future Property Holdings <noreply@fph.com>';
 
 // ── Transporter ────────────────────────────────────────────────
 let _transporter;
+let _resend;
+
+function getResend() {
+  if (_resend) return _resend;
+  if (!process.env.RESEND_API_KEY) return null;
+  _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
+
 function getTransporter() {
   if (_transporter) return _transporter;
   _transporter = nodemailer.createTransport({
@@ -38,6 +48,16 @@ ${body}
 // ── Send helper ────────────────────────────────────────────────
 async function send(to, subject, html) {
   try {
+    const resend = getResend();
+    if (resend) {
+      const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+      if (error) throw new Error(error.message || 'Resend email delivery failed');
+      return;
+    }
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      throw new Error('No email provider configured. Set RESEND_API_KEY or SMTP credentials.');
+    }
     await getTransporter().sendMail({ from: FROM, to, subject, html });
   } catch (err) {
     console.error('Email send error:', err.message);

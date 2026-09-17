@@ -518,25 +518,25 @@
 <!-- ████████ NAVBAR ████████ -->
 <nav class="navbar">
   <div class="container inner">
-    <div class="logo" onclick="showPage('home')" style="cursor:pointer">
+    <div class="logo" data-action="showPage('home')" style="cursor:pointer">
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V21H3V9.5z"/><rect x="9" y="14" width="6" height="7" fill="rgba(255,255,255,.4)"/></svg>
       </div>
       <div class="logo-text">Future Property Holdings<span>Smart Rental Management · Accra & Kumasi</span></div>
     </div>
     <div class="nav-links">
-      <a href="#" data-nav="home" class="active" onclick="showPage('home');return false">Home</a>
-      <a href="#" data-nav="about" onclick="showPage('about');return false">About</a>
-      <a href="#" data-nav="services" onclick="showPage('services');return false">Services</a>
-      <a href="#" data-nav="properties" onclick="showPage('properties');return false">Properties</a>
-      <a href="#" data-nav="blog" onclick="showPage('blog');return false">Blog</a>
-      <a href="#" data-nav="contact" onclick="showPage('contact');return false">Contact</a>
+      <a href="#" data-nav="home" class="active" data-action="showPage('home');return false">Home</a>
+      <a href="#" data-nav="about" data-action="showPage('about');return false">About</a>
+      <a href="#" data-nav="services" data-action="showPage('services');return false">Services</a>
+      <a href="#" data-nav="properties" data-action="showPage('properties');return false">Properties</a>
+      <a href="#" data-nav="blog" data-action="showPage('blog');return false">Blog</a>
+      <a href="#" data-nav="contact" data-action="showPage('contact');return false">Contact</a>
     </div>
     <div class="nav-cta" id="nav-cta">
-      <button class="btn btn-outline" onclick="openModal('login')">Login</button>
-      <button class="btn btn-primary" onclick="openModal('register')">Get Started</button>
+      <button class="btn btn-outline" data-action="openModal('login')">Login</button>
+      <button class="btn btn-primary" data-action="openModal('register')">Get Started</button>
     </div>
-    <button class="hamburger" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+    <button class="hamburger" data-action="toggleMobileMenu()" aria-label="Toggle navigation menu">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -544,15 +544,15 @@
 
 <!-- Mobile Nav -->
 <div id="mobile-menu" style="position:fixed;top:68px;left:0;right:0;background:#fff;z-index:999;border-bottom:1px solid #e2e8f0;padding:16px 24px;display:none;flex-direction:column;gap:8px;">
-  <a href="#" data-nav="home" onclick="showPage('home');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Home</a>
-  <a href="#" data-nav="about" onclick="showPage('about');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">About</a>
-  <a href="#" data-nav="services" onclick="showPage('services');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Services</a>
-  <a href="#" data-nav="properties" onclick="showPage('properties');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Properties</a>
-  <a href="#" data-nav="blog" onclick="showPage('blog');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Blog</a>
-  <a href="#" data-nav="contact" onclick="showPage('contact');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Contact</a>
+  <a href="#" data-nav="home" data-action="showPage('home');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Home</a>
+  <a href="#" data-nav="about" data-action="showPage('about');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">About</a>
+  <a href="#" data-nav="services" data-action="showPage('services');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Services</a>
+  <a href="#" data-nav="properties" data-action="showPage('properties');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Properties</a>
+  <a href="#" data-nav="blog" data-action="showPage('blog');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Blog</a>
+  <a href="#" data-nav="contact" data-action="showPage('contact');toggleMobileMenu();return false" style="padding:10px 16px;border-radius:8px;font-weight:500;color:#475569;">Contact</a>
   <div id="nav-cta-mobile" style="display:flex;gap:10px;margin-top:8px;">
-    <button class="btn btn-outline" style="flex:1" onclick="openModal('login')">Login</button>
-    <button class="btn btn-primary" style="flex:1" onclick="openModal('register')">Get Started</button>
+    <button class="btn btn-outline" style="flex:1" data-action="openModal('login')">Login</button>
+    <button class="btn btn-primary" style="flex:1" data-action="openModal('register')">Get Started</button>
   </div>
 </div>
 
@@ -569,11 +569,11 @@
         <h1>Find. Rent. Manage.<br><em>All In One Place.</em></h1>
         <p>Future Property Holdings connects landlords and tenants with a secure, transparent rental management system built for Accra and Kumasi — verified listings, smart rent tracking, and real-time communication.</p>
         <div class="hero-btns">
-          <button class="btn btn-primary" onclick="showPage('properties')">
+          <button class="btn btn-primary" data-action="showPage('properties')">
             <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z"/></svg>
             Browse Properties
           </button>
-          <button class="btn btn-white" onclick="openModal('register')">
+          <button class="btn btn-white" data-action="openModal('register')">
             <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd"/></svg>
             List Your Property
           </button>
@@ -652,7 +652,7 @@
             <option>GH₵5,000+</option>
           </select>
         </div>
-        <button class="btn btn-primary" onclick="showPage('properties')">
+        <button class="btn btn-primary" data-action="showPage('properties')">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="18"><circle cx="8" cy="8" r="5"/><path d="M14 14l4 4"/></svg>
           Search
         </button>
@@ -724,14 +724,14 @@
           <h2 class="section-title">Featured Properties</h2>
           <p class="section-sub">Verified, move-in ready properties across Accra and Kumasi.</p>
         </div>
-        <button class="btn btn-outline" onclick="showPage('properties')">View All →</button>
+        <button class="btn btn-outline" data-action="showPage('properties')">View All →</button>
       </div>
       <div class="filter-tabs">
-        <button class="filter-tab active" onclick="filterProps(this,'all')">All Types</button>
-        <button class="filter-tab" onclick="filterProps(this,'apartment')">Apartments</button>
-        <button class="filter-tab" onclick="filterProps(this,'house')">Houses</button>
-        <button class="filter-tab" onclick="filterProps(this,'office')">Offices</button>
-        <button class="filter-tab" onclick="filterProps(this,'studio')">Studios</button>
+        <button class="filter-tab active" data-action="filterProps(this,'all')">All Types</button>
+        <button class="filter-tab" data-action="filterProps(this,'apartment')">Apartments</button>
+        <button class="filter-tab" data-action="filterProps(this,'house')">Houses</button>
+        <button class="filter-tab" data-action="filterProps(this,'office')">Offices</button>
+        <button class="filter-tab" data-action="filterProps(this,'studio')">Studios</button>
       </div>
       <div class="properties-grid" id="props-grid">
         <!-- Cards injected by JS -->
@@ -765,9 +765,9 @@
       <p class="section-sub">Purpose-built views for admins, landlords, and tenants.</p>
       <div style="margin-top:40px">
         <div class="dash-tabs">
-          <button class="dash-tab active" onclick="switchDash(this,'admin')">Admin Panel</button>
-          <button class="dash-tab" onclick="switchDash(this,'landlord')">Landlord</button>
-          <button class="dash-tab" onclick="switchDash(this,'tenant')">Tenant</button>
+          <button class="dash-tab active" data-action="switchDash(this,'admin')">Admin Panel</button>
+          <button class="dash-tab" data-action="switchDash(this,'landlord')">Landlord</button>
+          <button class="dash-tab" data-action="switchDash(this,'tenant')">Tenant</button>
         </div>
         <!-- ADMIN DASHBOARD -->
         <div class="dash-panel active" id="dash-admin">
@@ -915,8 +915,8 @@
       <h2>Ready to Simplify Your Rental Experience?</h2>
       <p>Join 9,600+ landlords and tenants already on Future Property Holdings.</p>
       <div class="btns">
-        <button class="btn btn-white" onclick="openModal('register')">Create Free Account</button>
-        <button class="btn btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff" onclick="showPage('contact')">Talk to Us</button>
+        <button class="btn btn-white" data-action="openModal('register')">Create Free Account</button>
+        <button class="btn btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff" data-action="showPage('contact')">Talk to Us</button>
       </div>
     </div>
   </section>
@@ -985,12 +985,12 @@
   <section class="section">
     <div class="container">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px">
-        <div class="feature-card"><div class="feature-icon" style="background:#eff6ff"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div><h3>Property Listing</h3><p>Landlords can create detailed, verified property listings with photos, amenities, pricing, and availability. Listings are reviewed within 24 hours.</p><a href="#" onclick="openModal('register');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">List your property →</a></div>
-        <div class="feature-card"><div class="feature-icon" style="background:#ecfdf5"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div><h3>Smart Property Search</h3><p>Tenants search using filters for location, price, property type, number of bedrooms, furnishing, and availability date.</p><a href="#" onclick="showPage('properties');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Search properties →</a></div>
-        <div class="feature-card"><div class="feature-icon" style="background:#fef3c7"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h3>Rent Management</h3><p>Automated rent tracking, payment history, overdue alerts, and digital receipts. Supports MTN MoMo, Vodafone Cash, and bank transfers.</p><a href="#" onclick="goToDashOrLogin('rent');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Open rent dashboard →</a></div>
-        <div class="feature-card"><div class="feature-icon" style="background:#fdf2f8"><svg viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><h3>Automated Reminders</h3><p>SMS and email reminders sent 7, 3, and 1 day before rent due dates. Never miss a payment or a deadline again.</p><a href="#" onclick="openInfoModal('reminders');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">How reminders work →</a></div>
-        <div class="feature-card"><div class="feature-icon" style="background:#fef2f2"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div><h3>Maintenance Requests</h3><p>Tenants raise tickets. Landlords assign contractors. Every request logged, timestamped, and tracked to resolution.</p><a href="#" onclick="goToDashOrLogin('maintenance');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">File a request →</a></div>
-        <div class="feature-card"><div class="feature-icon" style="background:#f0fdf4"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div><h3>Secure Messaging</h3><p>End-to-end encrypted communication between landlords and tenants — all conversations stored and moderated for compliance.</p><a href="#" onclick="goToDashOrLogin('inquiries');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Open inquiries →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#eff6ff"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div><h3>Property Listing</h3><p>Landlords can create detailed, verified property listings with photos, amenities, pricing, and availability. Listings are reviewed within 24 hours.</p><a href="#" data-action="openModal('register');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">List your property →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#ecfdf5"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div><h3>Smart Property Search</h3><p>Tenants search using filters for location, price, property type, number of bedrooms, furnishing, and availability date.</p><a href="#" data-action="showPage('properties');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Search properties →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#fef3c7"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h3>Rent Management</h3><p>Automated rent tracking, payment history, overdue alerts, and digital receipts. Supports MTN MoMo, Vodafone Cash, and bank transfers.</p><a href="#" data-action="goToDashOrLogin('rent');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Open rent dashboard →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#fdf2f8"><svg viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><h3>Automated Reminders</h3><p>SMS and email reminders sent 7, 3, and 1 day before rent due dates. Never miss a payment or a deadline again.</p><a href="#" data-action="openInfoModal('reminders');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">How reminders work →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#fef2f2"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div><h3>Maintenance Requests</h3><p>Tenants raise tickets. Landlords assign contractors. Every request logged, timestamped, and tracked to resolution.</p><a href="#" data-action="goToDashOrLogin('maintenance');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">File a request →</a></div>
+        <div class="feature-card"><div class="feature-icon" style="background:#f0fdf4"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div><h3>Secure Messaging</h3><p>End-to-end encrypted communication between landlords and tenants — all conversations stored and moderated for compliance.</p><a href="#" data-action="goToDashOrLogin('inquiries');return false" style="color:var(--blue2);font-weight:600;font-size:.88rem">Open inquiries →</a></div>
       </div>
     </div>
   </section>
@@ -1007,21 +1007,21 @@
   <section class="search-section" style="position:static;top:auto">
     <div class="container">
       <div class="search-bar">
-        <div class="search-group"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="5"/><path d="M14 14l4 4"/></svg><input type="text" id="prop-search-q" placeholder="Search properties..." oninput="applyPropSearch()"></div>
-        <div class="search-group"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v1H3V4zm0 3h14v9a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/></svg><select id="prop-search-type" onchange="applyPropSearch()"><option value="all">All Types</option><option value="apartment">Apartment</option><option value="house">House</option><option value="studio">Studio</option><option value="office">Office</option></select></div>
-        <div class="search-group"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg><select id="prop-search-loc" onchange="applyPropSearch()"><option value="">All Locations</option><option>East Legon</option><option>Labone</option><option>Cantonments</option><option>Airport Residential</option><option>Kumasi</option></select></div>
-        <button class="btn btn-primary" onclick="applyPropSearch()">Search</button>
+        <div class="search-group"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="5"/><path d="M14 14l4 4"/></svg><input type="text" id="prop-search-q" placeholder="Search properties..." data-action-input="applyPropSearch()"></div>
+        <div class="search-group"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v1H3V4zm0 3h14v9a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/></svg><select id="prop-search-type" data-action-change="applyPropSearch()"><option value="all">All Types</option><option value="apartment">Apartment</option><option value="house">House</option><option value="studio">Studio</option><option value="office">Office</option></select></div>
+        <div class="search-group"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg><select id="prop-search-loc" data-action-change="applyPropSearch()"><option value="">All Locations</option><option>East Legon</option><option>Labone</option><option>Cantonments</option><option>Airport Residential</option><option>Kumasi</option></select></div>
+        <button class="btn btn-primary" data-action="applyPropSearch()">Search</button>
       </div>
     </div>
   </section>
   <section class="section" style="padding-top:40px">
     <div class="container">
       <div class="filter-tabs">
-        <button class="filter-tab active" onclick="filterProps(this,'all')">All</button>
-        <button class="filter-tab" onclick="filterProps(this,'apartment')">Apartments</button>
-        <button class="filter-tab" onclick="filterProps(this,'house')">Houses</button>
-        <button class="filter-tab" onclick="filterProps(this,'studio')">Studios</button>
-        <button class="filter-tab" onclick="filterProps(this,'office')">Offices</button>
+        <button class="filter-tab active" data-action="filterProps(this,'all')">All</button>
+        <button class="filter-tab" data-action="filterProps(this,'apartment')">Apartments</button>
+        <button class="filter-tab" data-action="filterProps(this,'house')">Houses</button>
+        <button class="filter-tab" data-action="filterProps(this,'studio')">Studios</button>
+        <button class="filter-tab" data-action="filterProps(this,'office')">Offices</button>
       </div>
       <div class="properties-grid" id="props-grid-2"></div>
     </div>
@@ -1057,7 +1057,7 @@
       </div>
       <nav id="dash-nav"></nav>
       <div class="dash-logout">
-        <button class="dash-nav-item" onclick="logout()" style="color:#ef4444">
+        <button class="dash-nav-item" data-action="logout()" style="color:#ef4444">
           <svg viewBox="0 0 20 20" fill="currentColor" width="16"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h8a1 1 0 011 1v3a1 1 0 11-2 0V4H5v12h6v-2a1 1 0 112 0v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/><path d="M16.293 9.293a1 1 0 011.414 0l2 2a1 1 0 010 1.414l-2 2a1 1 0 01-1.414-1.414L16.586 13H9a1 1 0 110-2h7.586l-.293-.293a1 1 0 010-1.414z"/></svg>
           Logout
         </button>
@@ -1101,7 +1101,7 @@
           <div class="form-group"><label>I am a</label><select><option>Tenant</option><option>Landlord</option><option>Property Manager</option><option>Other</option></select></div>
           <div class="form-group"><label>Subject</label><input type="text" id="contact-subject" placeholder="How can we help?"></div>
           <div class="form-group"><label>Message</label><textarea placeholder="Tell us more..."></textarea></div>
-          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="showToast('Message sent! We\'ll respond within 24 hours.','success')">Send Message</button>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" data-action="showToast('Message sent! We\'ll respond within 24 hours.','success')">Send Message</button>
         </div>
       </div>
     </div>
@@ -1118,7 +1118,7 @@
       </div>
       <div class="newsletter-form">
         <input type="email" placeholder="Enter your email address" id="nl-input">
-        <button class="btn btn-green" onclick="subscribeNewsletter()">Subscribe</button>
+        <button class="btn btn-green" data-action="subscribeNewsletter()">Subscribe</button>
       </div>
     </div>
   </section>
@@ -1141,21 +1141,21 @@
           <div class="footer-social"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
         </div>
       </div>
-      <div class="footer-col"><h4>Platform</h4><ul><li><a href="#" onclick="showPage('properties');return false">Browse Properties</a></li><li><a href="#" onclick="goToDashOrLogin('listings');return false">List Property</a></li><li><a href="#" onclick="goToDashOrLogin('overview');return false">Tenant Portal</a></li><li><a href="#" onclick="goToDashOrLogin('overview');return false">Landlord Portal</a></li><li><a href="#" onclick="goToDashOrLogin('overview');return false">Admin Panel</a></li></ul></div>
-      <div class="footer-col"><h4>Company</h4><ul><li><a href="#" onclick="showPage('about');return false">About Us</a></li><li><a href="#" onclick="showPage('services');return false">Services</a></li><li><a href="#" onclick="showPage('blog');return false">Blog</a></li><li><a href="#" onclick="showPage('contact');return false">Contact</a></li><li><a href="#" onclick="openInfoModal('careers');return false">Careers</a></li></ul></div>
-      <div class="footer-col"><h4>Support</h4><ul><li><a href="#" onclick="openInfoModal('help');return false">Help Center</a></li><li><a href="#" onclick="openInfoModal('landlord-guide');return false">Landlord Guide</a></li><li><a href="#" onclick="openInfoModal('tenant-guide');return false">Tenant Guide</a></li><li><a href="#" onclick="openInfoModal('privacy');return false">Privacy Policy</a></li><li><a href="#" onclick="openInfoModal('terms');return false">Terms of Use</a></li></ul></div>
+      <div class="footer-col"><h4>Platform</h4><ul><li><a href="#" data-action="showPage('properties');return false">Browse Properties</a></li><li><a href="#" data-action="goToDashOrLogin('listings');return false">List Property</a></li><li><a href="#" data-action="goToDashOrLogin('overview');return false">Tenant Portal</a></li><li><a href="#" data-action="goToDashOrLogin('overview');return false">Landlord Portal</a></li><li><a href="#" data-action="goToDashOrLogin('overview');return false">Admin Panel</a></li></ul></div>
+      <div class="footer-col"><h4>Company</h4><ul><li><a href="#" data-action="showPage('about');return false">About Us</a></li><li><a href="#" data-action="showPage('services');return false">Services</a></li><li><a href="#" data-action="showPage('blog');return false">Blog</a></li><li><a href="#" data-action="showPage('contact');return false">Contact</a></li><li><a href="#" data-action="openInfoModal('careers');return false">Careers</a></li></ul></div>
+      <div class="footer-col"><h4>Support</h4><ul><li><a href="#" data-action="openInfoModal('help');return false">Help Center</a></li><li><a href="#" data-action="openInfoModal('landlord-guide');return false">Landlord Guide</a></li><li><a href="#" data-action="openInfoModal('tenant-guide');return false">Tenant Guide</a></li><li><a href="#" data-action="openInfoModal('privacy');return false">Privacy Policy</a></li><li><a href="#" data-action="openInfoModal('terms');return false">Terms of Use</a></li></ul></div>
     </div>
     <div class="footer-bottom">
       <div class="footer-copy">© 2026 Future Property Holdings. All rights reserved. · Accra & Kumasi, Ghana</div>
-      <div class="footer-links"><a href="#" onclick="openInfoModal('privacy');return false">Privacy</a><a href="#" onclick="openInfoModal('terms');return false">Terms</a><a href="#" onclick="openInfoModal('cookies');return false">Cookies</a></div>
+      <div class="footer-links"><a href="#" data-action="openInfoModal('privacy');return false">Privacy</a><a href="#" data-action="openInfoModal('terms');return false">Terms</a><a href="#" data-action="openInfoModal('cookies');return false">Cookies</a></div>
     </div>
   </div>
 </footer>
 
 <!-- ████████ INFO / LEGAL / HELP MODAL ████████ -->
-<div class="modal-overlay" id="info-modal" onclick="if(event.target===this)closeInfoModal()">
+<div class="modal-overlay" id="info-modal" data-action="if(event.target===this)closeInfoModal()">
   <div class="modal" style="max-width:640px;position:relative">
-    <button class="modal-close" onclick="closeInfoModal()">
+    <button class="modal-close" data-action="closeInfoModal()">
       <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
     </button>
     <div class="modal-header"><h2 id="info-modal-title">Title</h2><p id="info-modal-sub">Subtitle</p></div>
@@ -1164,9 +1164,9 @@
 </div>
 
 <!-- ████████ PROPERTY DETAIL MODAL ████████ -->
-<div class="modal-overlay" id="prop-modal" onclick="if(event.target===this)closePropertyDetail()">
+<div class="modal-overlay" id="prop-modal" data-action="if(event.target===this)closePropertyDetail()">
   <div class="modal" style="max-width:720px;position:relative">
-    <button class="modal-close" style="z-index:2" onclick="closePropertyDetail()">
+    <button class="modal-close" style="z-index:2" data-action="closePropertyDetail()">
       <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
     </button>
     <div id="prop-modal-body"></div>
@@ -1179,44 +1179,44 @@
     <div class="modal-header">
       <h2 id="modal-title">Welcome Back</h2>
       <p id="modal-sub">Sign in to your account</p>
-      <button class="modal-close" onclick="closeModal()">
+      <button class="modal-close" data-action="closeModal()">
         <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </button>
     </div>
     <div class="modal-body">
       <div class="modal-tabs">
-        <button class="modal-tab active" onclick="switchAuthTab(this,'login')">Login</button>
-        <button class="modal-tab" onclick="switchAuthTab(this,'register')">Register</button>
+        <button class="modal-tab active" data-action="switchAuthTab(this,'login')">Login</button>
+        <button class="modal-tab" data-action="switchAuthTab(this,'register')">Register</button>
       </div>
       <!-- LOGIN FORM -->
       <div id="auth-login">
         <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com"></div>
         <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"></div>
-        <div style="display:flex;justify-content:flex-end;margin-bottom:20px"><a href="#" onclick="openInfoModal('forgot-password');return false" style="font-size:.85rem;color:var(--blue2)">Forgot password?</a></div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="handleLogin()">Sign In</button>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:20px"><a href="#" data-action="openInfoModal('forgot-password');return false" style="font-size:.85rem;color:var(--blue2)">Forgot password?</a></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" data-action="handleLogin">Sign In</button>
         <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--gray200)">
           <p style="font-size:.85rem;color:var(--gray600);margin-bottom:14px;text-align:center">Or verify with Face Recognition</p>
-          <button class="btn" style="width:100%;justify-content:center;background:var(--teal);color:#fff;box-shadow:0 4px 16px rgba(13,148,136,.35)" onclick="initFaceAuthLogin()">
+          <button class="btn" style="width:100%;justify-content:center;background:var(--teal);color:#fff;box-shadow:0 4px 16px rgba(13,148,136,.35)" data-action="initFaceAuthLogin">
             <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8h8V6z" clip-rule="evenodd"/></svg>
             Face Recognition Login
           </button>
         </div>
-        <div style="text-align:center;margin-top:20px;font-size:.88rem;color:var(--gray600)">Don't have an account? <a href="#" onclick="switchAuthTab(null,'register')" style="color:var(--blue2);font-weight:600">Create one</a></div>
+        <div style="text-align:center;margin-top:20px;font-size:.88rem;color:var(--gray600)">Don't have an account? <a href="#" data-action="switchAuthTab(null,'register')" style="color:var(--blue2);font-weight:600">Create one</a></div>
       </div>
       <!-- REGISTER FORM -->
       <div id="auth-register" style="display:none">
         <div style="margin-bottom:20px">
           <label style="display:block;font-size:.85rem;font-weight:600;color:var(--gray800);margin-bottom:10px">I am registering as a</label>
           <div class="role-select">
-            <div class="role-btn active" data-role="tenant" onclick="selectRole(this,'tenant')">
+            <div class="role-btn active" data-role="tenant" data-action="selectRole(this,'tenant')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
               <span>Tenant</span>
             </div>
-            <div class="role-btn" data-role="landlord" onclick="selectRole(this,'landlord')">
+            <div class="role-btn" data-role="landlord" data-action="selectRole(this,'landlord')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5V21H3V9.5z"/></svg>
               <span>Landlord</span>
             </div>
-            <div class="role-btn" data-role="admin" onclick="selectRole(this,'admin')">
+            <div class="role-btn" data-role="admin" data-action="selectRole(this,'admin')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
               <span>Admin</span>
             </div>
@@ -1230,7 +1230,7 @@
         <div class="form-group"><label>Phone (Ghana)</label><input type="tel" id="reg-phone" placeholder="+233 ..."></div>
         <div class="form-group"><label>Password</label><input type="password" id="reg-pass" placeholder="Min. 8 characters"></div>
         
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="handleRegister()">Create Account</button>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" data-action="handleRegister()">Create Account</button>
         <p style="font-size:.78rem;color:var(--gray400);text-align:center;margin-top:14px">By registering you agree to our Terms of Service and Privacy Policy.</p>
         <p style="font-size:.8rem;color:var(--gray500);text-align:center;margin-top:10px;padding-top:12px;border-top:1px solid var(--gray200)">💡 Verify your identity with Ghana Card & Face Recognition later in Settings to get a <span style="color:var(--blue2);font-weight:600">blue verification tick</span></p>
       </div>
@@ -1244,7 +1244,7 @@
     <div class="modal-header">
       <h2 id="bio-title">Camera Access</h2>
       <p id="bio-sub">Position your face in the center</p>
-      <button class="modal-close" onclick="closeBiometricModal()">
+      <button class="modal-close" data-action="closeBiometricModal()">
         <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </button>
     </div>
@@ -1263,9 +1263,9 @@
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn" style="flex:1;background:var(--gray100);color:var(--navy)" onclick="cancelBiometric()">Cancel</button>
-        <button class="btn btn-primary" style="flex:1;justify-content:center" id="capture-btn" onclick="captureBiometric()">Capture Photo</button>
-        <button class="btn btn-primary" style="flex:1;justify-content:center;display:none" id="confirm-btn" onclick="confirmBiometric()">Confirm & Save</button>
+        <button class="btn" style="flex:1;background:var(--gray100);color:var(--navy)" data-action="cancelBiometric()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center" id="capture-btn" data-action="captureBiometric()">Capture Photo</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;display:none" id="confirm-btn" data-action="confirmBiometric()">Confirm & Save</button>
       </div>
     </div>
   </div>
@@ -1277,7 +1277,7 @@
     <div class="modal-header">
       <h2>Ghana National ID Verification</h2>
       <p>Scan or photograph your Ghana Card</p>
-      <button class="modal-close" onclick="closeGhanaCardModal()">
+      <button class="modal-close" data-action="closeGhanaCardModal()">
         <svg viewBox="0 0 20 20" fill="currentColor" width="18"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </button>
     </div>
@@ -1298,8 +1298,8 @@
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn" style="flex:1;background:var(--gray100);color:var(--navy)" onclick="closeGhanaCardModal()">Cancel</button>
-        <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="verifyGhanaCard()">Verify & Save</button>
+        <button class="btn" style="flex:1;background:var(--gray100);color:var(--navy)" data-action="closeGhanaCardModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center" data-action="verifyGhanaCard()">Verify & Save</button>
       </div>
     </div>
   </div>
@@ -1307,26 +1307,26 @@
                 
         
 <!-- ████████ CHATBOT ████████ -->
-<button class="chatbot-btn" onclick="toggleChat()" title="Chat with us" aria-label="Open chat assistant">
+<button class="chatbot-btn" data-action="toggleChat()" title="Chat with us" aria-label="Open chat assistant">
   <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
 </button>
 <div class="chatbot-window" id="chat-window">
   <div class="cw-header">
     <div class="cw-avatar"><svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
     <div class="cw-info"><div class="cw-name">FPH Assistant</div><div class="cw-status">● Online · Replies instantly</div></div>
-    <button class="cw-close" onclick="toggleChat()" aria-label="Close chat"><svg viewBox="0 0 20 20" fill="currentColor" width="20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
+    <button class="cw-close" data-action="toggleChat()" aria-label="Close chat"><svg viewBox="0 0 20 20" fill="currentColor" width="20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button>
   </div>
   <div class="cw-messages" id="cw-msgs">
     <div class="cw-msg bot"><div class="cw-bubble">👋 Hi! I'm your FPH Assistant. I can help you find properties, list your home, or answer questions about rent management.</div></div>
   </div>
   <div class="cw-suggestions">
-    <button class="cw-sugg" onclick="sendChatMsg('Find me a 2-bedroom in Accra')">Find apartments</button>
-    <button class="cw-sugg" onclick="sendChatMsg('How do I list my property?')">List property</button>
-    <button class="cw-sugg" onclick="sendChatMsg('How does rent tracking work?')">Rent tracking</button>
+    <button class="cw-sugg" data-action="sendChatMsg('Find me a 2-bedroom in Accra')">Find apartments</button>
+    <button class="cw-sugg" data-action="sendChatMsg('How do I list my property?')">List property</button>
+    <button class="cw-sugg" data-action="sendChatMsg('How does rent tracking work?')">Rent tracking</button>
   </div>
   <div class="cw-input-row">
-    <input class="cw-input" id="cw-input" placeholder="Type a message..." onkeypress="if(event.key==='Enter')sendChatMsg()">
-    <button class="cw-send" onclick="sendChatMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+    <input class="cw-input" id="cw-input" placeholder="Type a message..." data-action-keydown="if(event.key==='Enter')sendChatMsg()">
+    <button class="cw-send" data-action="sendChatMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
   </div>
 </div>
 
@@ -1337,6 +1337,40 @@
 </div>
 
 <script>
+function runActionExpression(expression, event, trigger) {
+  if (!expression) return;
+  try {
+    return new Function('event', 'trigger', expression).call(window, event, trigger);
+  } catch (error) {
+    console.error('Action failed:', expression, error);
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-action]');
+  if (!trigger) return;
+  event.preventDefault();
+  runActionExpression(trigger.dataset.action, event, trigger);
+});
+
+document.addEventListener('change', (event) => {
+  const trigger = event.target.closest('[data-action-change]');
+  if (!trigger) return;
+  runActionExpression(trigger.dataset.actionChange, event, trigger);
+});
+
+document.addEventListener('input', (event) => {
+  const trigger = event.target.closest('[data-action-input]');
+  if (!trigger) return;
+  runActionExpression(trigger.dataset.actionInput, event, trigger);
+});
+
+document.addEventListener('keydown', (event) => {
+  const trigger = event.target.closest('[data-action-keydown]');
+  if (!trigger) return;
+  runActionExpression(trigger.dataset.actionKeydown, event, trigger);
+});
+
 // ── DATA & STATE ──
 const properties = [
   { id:1, title:'3-Bed Executive Apartment', loc:'East Legon, Accra', price:'GH₵4,500', period:'mo', beds:3, baths:2, size:'180', status:'available', type:'apartment', image:'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80&auto=format&fit=crop', gradient:'linear-gradient(135deg,#1a4aad,#2563eb)', emoji:'🏢' },
@@ -1582,7 +1616,7 @@ function renderProps(targetId, filter='all') {
           ? `<img class="prop-img-bg" src="${p.image}" alt="${p.title}" loading="lazy" referrerpolicy="no-referrer">`
           : `<div class="prop-img-placeholder"><span style="font-size:4rem">${p.emoji}</span></div>`}
         <div class="prop-badge"><span class="tag tag-${p.status}">${p.status==='available'?'Available':p.status==='rented'?'Rented':'Pending'}</span></div>
-        <button class="prop-fav" onclick="showToast('Added to favourites ♥️','success')">
+        <button class="prop-fav" data-action="showToast('Added to favourites ♥️','success')">
           <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </button>
       </div>
@@ -1596,7 +1630,7 @@ function renderProps(targetId, filter='all') {
         </div>
         <div class="prop-footer">
           <div class="prop-price">${p.price}<span>/${p.period}</span></div>
-          <button class="btn btn-primary" style="padding:8px 16px;font-size:.82rem" onclick="openPropertyDetail(${p.id})">View Details</button>
+          <button class="btn btn-primary" style="padding:8px 16px;font-size:.82rem" data-action="openPropertyDetail(${p.id})">View Details</button>
         </div>
       </div>
     </div>
@@ -1615,7 +1649,7 @@ function renderBlog() {
   const g = document.getElementById('blog-grid');
   if(!g) return;
   g.innerHTML = blogPosts.map(b=>`
-    <div class="blog-card" onclick="showToast('Opening article...')">
+    <div class="blog-card" data-action="showToast('Opening article...')">
       <div class="blog-img" style="background:${b.gradient};background-image:${b.image?`linear-gradient(135deg,rgba(10,22,40,.15),rgba(10,22,40,.15)),url('${b.image}')`:`${b.gradient}`};background-size:cover;background-position:center">${b.image?'':'<span style="font-size:3rem">📰</span>'}</div>
       <div class="blog-body">
         <div class="blog-cat">${b.cat}</div>
@@ -1667,10 +1701,10 @@ function openPropertyDetail(id) {
     : '<div class="pd-hero" style="background:' + p.gradient + ';display:flex;align-items:center;justify-content:center"><span style="font-size:5rem">' + p.emoji + '</span></div>';
   const statusLabel = p.status === 'available' ? 'Available' : p.status === 'rented' ? 'Rented' : 'Pending';
   const actions = p.status === 'available'
-    ? '<button class="btn btn-primary" onclick="applyForProperty(' + p.id + ')">Apply Now</button>'
-      + '<button class="btn btn-outline" onclick="contactLandlord(' + p.id + ')">Contact Landlord</button>'
-      + '<button class="btn" style="background:var(--gray100);color:var(--navy)" onclick="closePropertyDetail()">Close</button>'
-    : '<button class="btn" style="background:var(--gray100);color:var(--navy);flex:1;justify-content:center" onclick="closePropertyDetail()">Close</button>';
+    ? '<button class="btn btn-primary" data-action="applyForProperty(' + p.id + ')">Apply Now</button>'
+      + '<button class="btn btn-outline" data-action="contactLandlord(' + p.id + ')">Contact Landlord</button>'
+      + '<button class="btn" style="background:var(--gray100);color:var(--navy)" data-action="closePropertyDetail()">Close</button>'
+    : '<button class="btn" style="background:var(--gray100);color:var(--navy);flex:1;justify-content:center" data-action="closePropertyDetail()">Close</button>';
   body.innerHTML =
     heroHtml +
     '<div class="pd-body">' +
@@ -1768,6 +1802,10 @@ function selectRole(btn, role) {
 async function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
+
+  if (typeof window.FPH?.app?.handleLogin === 'function') {
+    return window.FPH.app.handleLogin();
+  }
 
   if (!email || !pass) {
     showToast('Please fill in all fields', 'error');
@@ -1933,7 +1971,7 @@ renderBlog();
 <!-- Cookie consent banner -->
 <div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);color:#fff;padding:16px 24px;z-index:99999;font-size:.88rem;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap">
   We use essential cookies to keep you signed in. <a href="javascript:openInfoModal('cookies')" style="color:var(--sky);text-decoration:underline">Learn more</a>
-  <button onclick="acceptCookies()" style="padding:8px 20px;background:var(--blue2);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Accept</button>
+  <button data-action="acceptCookies()" style="padding:8px 20px;background:var(--blue2);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Accept</button>
 </div>
 <script>
   (function(){

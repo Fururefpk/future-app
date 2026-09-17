@@ -18,6 +18,8 @@ window.FPH.rent = (() => {
   async function voidInvoice(id)     { Cache.del('rent:mine:{}'); return api.del(`/rent/invoices/${id}`); }
   async function revenueSummary(p)   { return api.get('/rent/summary',{params:p}); }
   async function reminders(params)   { return api.get('/rent/reminders',{params}); }
+  async function initializePaystack(invoiceId) { return api.post(`/rent/invoices/${invoiceId}/paystack/initialize`); }
+  async function verifyPaystack(invoiceId, reference) { return api.post(`/rent/invoices/${invoiceId}/paystack/verify`, { reference }); }
 
   async function recordPayment(invoiceId, payload) {
     Cache.del('rent:mine:{}');
@@ -40,5 +42,5 @@ window.FPH.rent = (() => {
     paid:'#059669', unpaid:'#f59e0b', overdue:'#ef4444', voided:'#6b7280',
   };
 
-  return { myInvoices, getAll, getById, getPayments, generate, update, voidInvoice, recordPayment, revenueSummary, reminders, pdfUrl, PAYMENT_METHODS, STATUS_COLORS };
+  return { myInvoices, getAll, getById, getPayments, generate, update, voidInvoice, recordPayment, initializePaystack, verifyPaystack, revenueSummary, reminders, pdfUrl, PAYMENT_METHODS, STATUS_COLORS };
 })();

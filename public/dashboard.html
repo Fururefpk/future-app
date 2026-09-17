@@ -27,21 +27,21 @@
     </div>
     <div class="header-user">
       <div style="position:relative;">
-        <button class="notif-btn" onclick="FPH.notificationsUI.toggle()" id="notifBtn" title="Notifications">
+        <button class="notif-btn" data-action="FPH.notificationsUI.toggle" id="notifBtn" title="Notifications">
           <span id="notifBtnIcon"></span>
           <span class="notif-badge-dot" id="notifBadge" style="display:none;">0</span>
         </button>
         <div class="notif-panel" id="notifPanel">
           <div class="notif-panel-header">
             <h4>Notifications</h4>
-            <button class="btn btn-ghost btn-sm" onclick="FPH.notificationsUI.markAllRead()">Mark all read</button>
+            <button class="btn btn-ghost btn-sm" data-action="FPH.notificationsUI.markAllRead">Mark all read</button>
           </div>
           <div class="notif-list" id="notifList"><div class="loading-center" style="padding:32px;"><div class="loading-spinner"></div></div></div>
         </div>
       </div>
       <span class="header-user-name">Welcome, <strong id="userName"></strong></span>
-      <div class="header-avatar" id="headerAvatar" onclick="FPH.dashboardUI.goTo('settings')" title="Settings">?</div>
-      <button class="btn btn-outline btn-sm" onclick="handleLogout()" id="logoutBtn">
+      <div class="header-avatar" id="headerAvatar" data-action="FPH.dashboardUI.goTo" data-value="settings" title="Settings">?</div>
+      <button class="btn btn-outline btn-sm" data-action="handleLogout" id="logoutBtn">
         <span id="logoutIcon"></span> Sign Out
       </button>
     </div>
@@ -52,7 +52,7 @@
 <div id="dashboard" style="display:block;">
   <div class="dash-layout">
     <!-- Sidebar overlay for mobile -->
-    <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:299;" onclick="FPH.dashboardUI.closeSidebar()"></div>
+    <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:299;" data-action="FPH.dashboardUI.closeSidebar"></div>
 
     <!-- Sidebar -->
     <aside class="dash-sidebar" id="dashSidebar">
@@ -70,7 +70,7 @@
     <main class="dash-main" id="dashMain">
       <!-- Mobile header row -->
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--gray-200);" class="mobile-panel-header" id="mobilePanelHeader">
-        <button class="btn btn-ghost btn-icon" onclick="FPH.dashboardUI.openSidebar()" style="display:none;" id="menuToggle">
+        <button class="btn btn-ghost btn-icon" data-action="FPH.dashboardUI.openSidebar" style="display:none;" id="menuToggle">
           <span id="menuToggleIcon"></span>
         </button>
         <div>
@@ -91,7 +91,7 @@
   <div class="modal-box" style="max-width:900px;">
     <div class="modal-header">
       <h3 class="modal-title" id="propDetailTitle">Property Details</h3>
-      <button class="modal-close-btn" onclick="closeModal('propertyDetailModal')">
+      <button class="modal-close-btn" data-action="closeModal" data-value="propertyDetailModal">
         <span id="propDetailCloseIcon"></span>
       </button>
     </div>
@@ -104,7 +104,7 @@
   <div class="modal-box" style="max-width:560px;">
     <div class="modal-header">
       <h3 class="modal-title" id="propertyModalTitle">New Listing</h3>
-      <button class="modal-close-btn" onclick="closeModal('propertyModal')">
+      <button class="modal-close-btn" data-action="closeModal" data-value="propertyModal">
         <span id="propCloseIcon"></span>
       </button>
     </div>
@@ -175,8 +175,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('propertyModal')">Cancel</button>
-      <button class="btn btn-primary" id="propertySubmitBtn" onclick="FPH.propertiesUI.submit()">Save Listing</button>
+      <button class="btn btn-outline" data-action="closeModal" data-value="propertyModal">Cancel</button>
+      <button class="btn btn-primary" id="propertySubmitBtn" data-action="FPH.propertiesUI.submit">Save Listing</button>
     </div>
   </div>
 </div>
@@ -186,7 +186,7 @@
   <div class="modal-box" style="max-width:480px;">
     <div class="modal-header">
       <h3 class="modal-title">Generate Invoice</h3>
-      <button class="modal-close-btn" onclick="closeModal('generateInvoiceModal')"><span id="invoiceCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeModal" data-value="generateInvoiceModal"><span id="invoiceCloseIcon"></span></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -209,8 +209,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('generateInvoiceModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="FPH.rentUI.submitGenerate()">Generate Invoice</button>
+      <button class="btn btn-outline" data-action="closeModal" data-value="generateInvoiceModal">Cancel</button>
+      <button class="btn btn-primary" data-action="FPH.rentUI.submitGenerate">Generate Invoice</button>
     </div>
   </div>
 </div>
@@ -220,7 +220,7 @@
   <div class="modal-box" style="max-width:440px;">
     <div class="modal-header">
       <h3 class="modal-title">Record Payment</h3>
-      <button class="modal-close-btn" onclick="closeModal('payModal')"><span id="payCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeModal" data-value="payModal"><span id="payCloseIcon"></span></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="pay-invoiceId">
@@ -248,8 +248,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('payModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="FPH.rentUI.submitPayment()">Confirm Payment</button>
+      <button class="btn btn-outline" data-action="closeModal" data-value="payModal">Cancel</button>
+      <button class="btn btn-primary" data-action="FPH.rentUI.submitPayment">Confirm Payment</button>
     </div>
   </div>
 </div>
@@ -259,7 +259,7 @@
   <div class="modal-box" style="max-width:500px;">
     <div class="modal-header">
       <h3 class="modal-title">New Maintenance Request</h3>
-      <button class="modal-close-btn" onclick="closeModal('maintenanceModal')"><span id="maintCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeModal" data-value="maintenanceModal"><span id="maintCloseIcon"></span></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -287,8 +287,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('maintenanceModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="FPH.maintenanceUI.submit()">Submit Request</button>
+      <button class="btn btn-outline" data-action="closeModal" data-value="maintenanceModal">Cancel</button>
+      <button class="btn btn-primary" data-action="FPH.maintenanceUI.submit">Submit Request</button>
     </div>
   </div>
 </div>
@@ -298,7 +298,7 @@
   <div class="modal-box" style="max-width:480px;">
     <div class="modal-header">
       <h3 class="modal-title">New Inquiry</h3>
-      <button class="modal-close-btn" onclick="closeModal('newInquiryModal')"><span id="inqCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeModal" data-value="newInquiryModal"><span id="inqCloseIcon"></span></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -315,8 +315,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('newInquiryModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="FPH.chatUI.sendNew()">Send Inquiry</button>
+      <button class="btn btn-outline" data-action="closeModal" data-value="newInquiryModal">Cancel</button>
+      <button class="btn btn-primary" data-action="FPH.chatUI.sendNew">Send Inquiry</button>
     </div>
   </div>
 </div>
@@ -329,12 +329,12 @@
         <h3 class="modal-title" id="threadTitle">Conversation</h3>
         <div style="font-size:13px;color:var(--gray-500);" id="threadMeta"></div>
       </div>
-      <button class="modal-close-btn" onclick="closeModal('chatThreadModal')"><span id="threadCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeModal" data-value="chatThreadModal"><span id="threadCloseIcon"></span></button>
     </div>
     <div class="chat-thread" id="chatMessages" style="flex:1;overflow-y:auto;"></div>
     <div class="chat-input-wrap" style="flex-shrink:0;">
-      <input type="text" class="form-control" id="threadReply" placeholder="Type a message&hellip;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();FPH.chatUI.sendReply();}">
-      <button class="btn btn-primary" onclick="FPH.chatUI.sendReply()"><span id="chatSendIcon"></span></button>
+      <input type="text" class="form-control" id="threadReply" placeholder="Type a message&hellip;" data-action-keydown="FPH.chatUI.sendReply">
+      <button class="btn btn-primary" data-action="FPH.chatUI.sendReply"><span id="chatSendIcon"></span></button>
     </div>
   </div>
 </div>
@@ -344,7 +344,7 @@
   <div class="modal-box" style="max-width:520px;">
     <div class="modal-header">
       <h3 class="modal-title" id="biometricTitle">Face Verification</h3>
-      <button class="modal-close-btn" onclick="closeFaceModal()"><span id="biometricCloseIcon"></span></button>
+      <button class="modal-close-btn" data-action="closeFaceModal"><span id="biometricCloseIcon"></span></button>
     </div>
     <div class="modal-body">
       <div class="camera-wrap">
@@ -354,8 +354,8 @@
       <canvas id="captureCanvas" style="display:none;"></canvas>
       <div class="camera-status detecting" id="faceDetectionStatus">Position your face within the guide circle&hellip;</div>
       <div class="modal-footer" style="border:none;padding:0;margin-top:16px;justify-content:center;">
-        <button class="btn btn-outline" onclick="closeFaceModal()">Cancel</button>
-        <button class="btn btn-primary" id="captureBtn" onclick="captureFace()">Capture Photo</button>
+        <button class="btn btn-outline" data-action="closeFaceModal">Cancel</button>
+        <button class="btn btn-primary" id="captureBtn" data-action="captureFace">Capture Photo</button>
       </div>
     </div>
   </div>
@@ -365,7 +365,7 @@
 <div id="toast-container"></div>
 
 <!-- MOBILE NAV TOGGLE -->
-<button id="mobileMenuBtn" class="btn btn-primary btn-icon" onclick="FPH.dashboardUI.openSidebar()"
+<button id="mobileMenuBtn" class="btn btn-primary btn-icon" data-action="FPH.dashboardUI.openSidebar"
   style="display:none;position:fixed;bottom:24px;right:24px;z-index:250;width:48px;height:48px;border-radius:50%;box-shadow:var(--shadow-lg);">
   <span id="mobileMenuIcon"></span>
 </button>
@@ -445,18 +445,62 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(function(){});
   });
 }
-function openAuth(tab)    { FPH.app.openAuth(tab); }
-function switchAuthTab(t) { FPH.app.switchAuthTab(t); }
-function handleLogin()    { FPH.app.handleLogin(); }
-function handleRegister() { FPH.app.handleRegister(); }
-function handleLogout()   { FPH.app.handleLogout(); }
-function handlePasskeyLogin()  { FPH.app.handlePasskeyLogin(); }
-function handleSocialLogin(p)  { FPH.socialLogin.redirect(p); }
-function openFaceAuth()        { if(FPH.cameraUI) FPH.cameraUI.open('auth'); }
-function openSettings()        { if(FPH.dashboardUI) FPH.dashboardUI.goTo('settings'); }
-function closeFaceModal()      { if(FPH.cameraUI) FPH.cameraUI.close(); }
-function captureFace()         { if(FPH.cameraUI) FPH.cameraUI.capture(); }
-function closeModal(id)        { document.getElementById(id)?.classList.remove('active'); }
+function resolveActionPath(path) {
+  return path.split('.').reduce((obj, key) => (obj && obj[key] !== undefined ? obj[key] : undefined), window);
+}
+function openAuth(tab)    { if (window.FPH?.app?.openAuth) window.FPH.app.openAuth(tab); }
+function switchAuthTab(t) { if (window.FPH?.app?.switchAuthTab) window.FPH.app.switchAuthTab(t); }
+function handleLogin()    { if (window.FPH?.app?.handleLogin) return window.FPH.app.handleLogin(); }
+function handleRegister() { if (window.FPH?.app?.handleRegister) return window.FPH.app.handleRegister(); }
+function handleLogout()   { if (window.FPH?.app?.handleLogout) return window.FPH.app.handleLogout(); }
+function handlePasskeyLogin()  { if (window.FPH?.app?.handlePasskeyLogin) return window.FPH.app.handlePasskeyLogin(); }
+function handleSocialLogin(p)  { if (window.FPH?.socialLogin?.redirect) return window.FPH.socialLogin.redirect(p); }
+function openFaceAuth()        { if (window.FPH?.cameraUI) window.FPH.cameraUI.open('auth'); }
+function openSettings()        { if (window.FPH?.dashboardUI) window.FPH.dashboardUI.goTo('settings'); }
+function closeFaceModal()      { if (window.FPH?.cameraUI) window.FPH.cameraUI.close(); }
+function captureFace()         { if (window.FPH?.cameraUI) window.FPH.cameraUI.capture(); }
+function closeModal(id)        { const el = document.getElementById(id); if (el) el.classList.remove('active'); }
+
+document.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-action]');
+  if (!trigger) return;
+  const fn = resolveActionPath(trigger.dataset.action);
+  if (typeof fn !== 'function') return;
+  const args = [];
+  if (trigger.dataset.value !== undefined) args.push(trigger.dataset.value);
+  if (trigger.dataset.id !== undefined) args.push(trigger.dataset.id);
+  if (trigger.dataset.name !== undefined) args.push(trigger.dataset.name);
+  if (trigger.dataset.target !== undefined) args.push(trigger.dataset.target);
+  if (trigger.dataset.requiresElement === 'true') {
+    fn(trigger, ...args);
+  } else {
+    fn(...args);
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const trigger = event.target.closest('[data-action-change]');
+  if (!trigger) return;
+  const fn = resolveActionPath(trigger.dataset.actionChange);
+  if (typeof fn !== 'function') return;
+  const args = [event.target.value];
+  if (trigger.dataset.requiresElement === 'true') {
+    fn(trigger, ...args);
+  } else {
+    fn(...args);
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  const trigger = event.target.closest('[data-action-keydown]');
+  if (!trigger || event.key !== 'Enter' || event.shiftKey) return;
+  const fn = resolveActionPath(trigger.dataset.actionKeydown);
+  if (typeof fn !== 'function') return;
+  event.preventDefault();
+  const args = [];
+  if (trigger.dataset.value !== undefined) args.push(trigger.dataset.value);
+  fn(...args);
+});
 </script>
 
 </body>

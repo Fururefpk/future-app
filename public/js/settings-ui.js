@@ -18,11 +18,11 @@ window.FPH.settingsUI = (() => {
 
         <!-- Tabs -->
         <div class="tabs" id="settingsTabs">
-          <button class="tab-btn active" onclick="FPH.settingsUI.showTab('profile',this)">Profile</button>
-          <button class="tab-btn"        onclick="FPH.settingsUI.showTab('security',this)">Security</button>
-          <button class="tab-btn"        onclick="FPH.settingsUI.showTab('verification',this)">Identity Verification</button>
-          <button class="tab-btn"        onclick="FPH.settingsUI.showTab('notifications',this)">Notifications</button>
-          <button class="tab-btn"        onclick="FPH.settingsUI.showTab('danger',this)">Account</button>
+          <button class="tab-btn active" data-action="FPH.settingsUI.showTab" data-value="profile" data-requires-element="true">Profile</button>
+          <button class="tab-btn" data-action="FPH.settingsUI.showTab" data-value="security" data-requires-element="true">Security</button>
+          <button class="tab-btn" data-action="FPH.settingsUI.showTab" data-value="verification" data-requires-element="true">Identity Verification</button>
+          <button class="tab-btn" data-action="FPH.settingsUI.showTab" data-value="notifications" data-requires-element="true">Notifications</button>
+          <button class="tab-btn" data-action="FPH.settingsUI.showTab" data-value="danger" data-requires-element="true">Account</button>
         </div>
 
         <div id="settingsTabContent"></div>
@@ -75,7 +75,7 @@ window.FPH.settingsUI = (() => {
           <label class="form-label">Account Role</label>
           <input type="text" class="form-control" value="${esc(FPH.utils.capitalize(u.role||''))}" disabled>
         </div>
-        <button class="btn btn-primary" onclick="FPH.settingsUI.saveProfile()">Save Changes</button>
+        <button class="btn btn-primary" data-action="FPH.settingsUI.saveProfile">Save Changes</button>
       </div>
     </div>`;
   }
@@ -96,7 +96,7 @@ window.FPH.settingsUI = (() => {
           <label class="form-label">Confirm New Password <span class="required">*</span></label>
           <input type="password" class="form-control" id="s-confirmPwd" placeholder="Repeat new password" autocomplete="new-password">
         </div>
-        <button class="btn btn-primary" onclick="FPH.settingsUI.changePassword()">Update Password</button>
+        <button class="btn btn-primary" data-action="FPH.settingsUI.changePassword">Update Password</button>
       </div>
     </div>
     <div class="card" style="margin-top:16px;">
@@ -104,7 +104,7 @@ window.FPH.settingsUI = (() => {
       <div class="card-body">
         <p style="margin-bottom:16px;">Register a passkey to sign in without a password using your device biometrics (fingerprint, Face ID).</p>
         ${FPH.passkey.isSupported()
-          ? `<button class="btn btn-outline" onclick="FPH.passkeyUI.openRegisterModal()">${I('passkey')} Register a Passkey</button>`
+          ? `<button class="btn btn-outline" data-action="FPH.passkeyUI.openRegisterModal">${I('passkey')} Register a Passkey</button>`
           : `<div class="alert alert-warning">${I('alert-triangle')} Passkeys are not supported in this browser.</div>`}
       </div>
     </div>`;
@@ -145,7 +145,7 @@ window.FPH.settingsUI = (() => {
                 <label class="form-label">Card Photo (optional but recommended)</label>
                 <input type="file" class="form-control" id="ghanaCardImage" accept="image/*">
               </div>
-              <button class="btn btn-primary" onclick="FPH.verificationUI.submitGhanaCard()">${I('upload')} Submit Ghana Card</button>` : ''}
+              <button class="btn btn-primary" data-action="FPH.verificationUI.submitGhanaCard">${I('upload')} Submit Ghana Card</button>` : ''}
             ${v.submittedAt && !ghanaVerified ? `<div class="alert alert-warning" style="margin-top:12px;">${I('clock')} Submitted on ${FPH.utils.formatDate(v.submittedAt)}. Awaiting admin review.</div>` : ''}
           </div>
         </div>
@@ -157,10 +157,10 @@ window.FPH.settingsUI = (() => {
             <div class="verify-step-title">Face Verification ${faceVerified?'<span class="badge badge-success">Enrolled</span>':''}</div>
             <div class="verify-step-desc">We capture a live photo and match it to confirm your identity. Your face data is stored as a mathematical descriptor only — no photos are retained.</div>
             ${!faceVerified
-              ? `<button class="btn btn-primary" onclick="FPH.cameraUI.open('enroll')">${I('camera')} Start Face Capture</button>`
+              ? `<button class="btn btn-primary" data-action="FPH.cameraUI.open" data-value="enroll">${I('camera')} Start Face Capture</button>`
               : `<div style="display:flex;gap:12px;margin-top:12px;">
-                  <button class="btn btn-outline" onclick="FPH.cameraUI.open('enroll')">${I('refresh')} Re-enroll</button>
-                  <button class="btn btn-ghost" onclick="FPH.verification.deleteFace().then(()=>{FPH.toast.info('Face data removed.');FPH.dashboardUI.goTo('settings');})">${I('trash')} Remove</button>
+                  <button class="btn btn-outline" data-action="FPH.cameraUI.open" data-value="enroll">${I('refresh')} Re-enroll</button>
+                  <button class="btn btn-ghost" data-action="FPH.settingsUI.removeFaceData">${I('trash')} Remove</button>
                 </div>`}
           </div>
         </div>
@@ -185,7 +185,7 @@ window.FPH.settingsUI = (() => {
               <input type="checkbox" id="notif-${key}" ${n[key]!==false?'checked':''} style="width:16px;height:16px;">
             </label>
           </div>`).join('')}
-        <button class="btn btn-primary" style="margin-top:20px;" onclick="FPH.settingsUI.saveNotifications()">Save Preferences</button>
+        <button class="btn btn-primary" style="margin-top:20px;" data-action="FPH.settingsUI.saveNotifications">Save Preferences</button>
       </div>
     </div>`;
   }
@@ -197,7 +197,7 @@ window.FPH.settingsUI = (() => {
       </div>
       <div class="card-body">
         <p style="margin-bottom:16px;">Permanently delete your account and all associated data. This action is irreversible and cannot be undone.</p>
-        <button class="btn btn-danger" onclick="FPH.settingsUI.confirmDelete()">${I('trash')} Delete My Account</button>
+        <button class="btn btn-danger" data-action="FPH.settingsUI.confirmDelete">${I('trash')} Delete My Account</button>
       </div>
     </div>`;
   }

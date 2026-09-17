@@ -9,6 +9,6 @@ window.FPH.UtilsUIHelpers = (() => {
   function renderError(msg) { return '<div style="padding:16px;color:#ef4444;">⚠ '+esc(msg)+'</div>'; }
   function renderListItem(left, right) { return '<div class="list-item">'+left+(right?'<div>'+right+'</div>':'')+'</div>'; }
   
-  function renderCopyBtn(text,label){return '<button onclick="FPH.utils.copyToClipboard(\"'+FPH.utils.escapeAttr(text)+'\").then(()=>FPH.toast.success(\"Copied!\"))" class="btn-outline-sm">📋 '+(label||'Copy')+'</button>';}
+  function renderCopyBtn(text,label){return '<button data-action="FPH.utils.copyToClipboard" data-value="'+FPH.utils.escapeAttr(text)+'" class="btn-outline-sm">📋 '+(label||'Copy')+'</button>';}
   return { renderEmpty, renderLoading, renderError, renderListItem };
 })();

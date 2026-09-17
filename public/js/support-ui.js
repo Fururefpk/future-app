@@ -13,9 +13,9 @@ window.FPH.supportUI = (() => {
           <div style="font-size:13px;color:var(--gray-500);margin-top:4px;">Browse FAQs or submit a support ticket.</div>
         </div>
         <div class="tabs" id="supportTabs">
-          <button class="tab-btn active" onclick="FPH.supportUI.showTab('faq',this)">Frequently Asked Questions</button>
-          <button class="tab-btn"        onclick="FPH.supportUI.showTab('tickets',this)">My Tickets</button>
-          <button class="tab-btn"        onclick="FPH.supportUI.showTab('new',this)">New Ticket</button>
+          <button class="tab-btn active" data-action="FPH.supportUI.showTab" data-value="faq" data-requires-element="true">Frequently Asked Questions</button>
+          <button class="tab-btn" data-action="FPH.supportUI.showTab" data-value="tickets" data-requires-element="true">My Tickets</button>
+          <button class="tab-btn" data-action="FPH.supportUI.showTab" data-value="new" data-requires-element="true">New Ticket</button>
         </div>
         <div id="supportTabContent"></div>
       </div>`;
@@ -101,7 +101,7 @@ window.FPH.supportUI = (() => {
           <label class="form-label">Message <span class="required">*</span></label>
           <textarea class="form-control" id="ticket-msg" rows="5" placeholder="Describe your issue in detail. Include any relevant property IDs or transaction references."></textarea>
         </div>
-        <button class="btn btn-primary" onclick="FPH.supportUI.submit()">${I('send')} Submit Ticket</button>
+        <button class="btn btn-primary" data-action="FPH.supportUI.submit">${I('send')} Submit Ticket</button>
       </div>
     </div>`;
   }

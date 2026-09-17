@@ -1,7 +1,8 @@
 'use strict';
-const Invoice  = require('../models/Invoice');
+const Invoice  = require('../models/invoice');
 const Tenancy  = require('../models/Tenancy');
 const Email    = require('../utils/email');
+const Paystack = require('../utils/paystack');
 
 const ok  = (res,data,s=200) => res.status(s).json({success:true,data});
 const err = (res,msg,s=400)  => res.status(s).json({success:false,message:msg});
@@ -179,4 +180,47 @@ exports.revenueSummary = async (req,res,next) => {
     ]);
     ok(res,{summary,year});
   } catch(e){next(e);}
+};
+
+exports.initializePaystackPayment = async (req, res, next) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id).populate('tenant', 'email');
+    if (!invoice) return err(res, 'Invoice not found', 404);
+    if (invoice.tenant._id.toString() !== req.user._id.toString()) return err(res, 'Not authorised', 403);
+    if (invoice.status === 'voided' || invoice.status === 'paid') return err(res, 'Invoice is not payable');
+
+    const reference = `FPH-${invoice._id}-${Date.now()}`;
+    const payment = await Paystack.initializeTransaction({
+      email: invoice.tenant.email,
+      amount: invoice.amount - (invoice.paidAmount || 0),
+      reference,
+      callbackUrl: process.env.PAYSTACK_CALLBACK_URL,
+    });
+    ok(res, { authorizationUrl: payment.authorization_url, accessCode: payment.access_code, reference });
+  } catch (e) { next(e); }
+};
+
+exports.verifyPaystackPayment = async (req, res, next) => {
+  try {
+    const { reference } = req.body;
+    if (!reference) return err(res, 'Payment reference is required');
+    const payment = await Paystack.verifyTransaction(reference);
+    if (payment.status !== 'success') return err(res, 'Payment was not successful', 400);
+
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return err(res, 'Invoice not found', 404);
+    if (invoice.tenant.toString() !== req.user._id.toString()) return err(res, 'Not authorised', 403);
+    if (invoice.payments.some(item => item.transactionRef === reference)) return ok(res, { invoice, message: 'Payment already recorded' });
+
+    const amount = Number(payment.amount) / 100;
+    const remaining = Math.max(0, invoice.amount - (invoice.paidAmount || 0));
+    if (amount < remaining) return err(res, 'Payment amount does not cover the invoice balance');
+
+    invoice.payments.push({ method: 'card', transactionRef: reference, amount, paidAt: new Date(), recordedBy: req.user._id, notes: 'Paystack payment' });
+    invoice.paidAmount = (invoice.paidAmount || 0) + amount;
+    invoice.status = invoice.paidAmount >= invoice.amount ? 'paid' : 'unpaid';
+    if (invoice.status === 'paid') invoice.paidAt = new Date();
+    await invoice.save();
+    ok(res, { invoice });
+  } catch (e) { next(e); }
 };

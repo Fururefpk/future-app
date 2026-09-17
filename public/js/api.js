@@ -6,7 +6,7 @@ window.FPH.api = (() => {
     if (typeof window.__FPH_API_URL__ !== 'undefined') return window.__FPH_API_URL__;
     return /localhost|127/.test(location.hostname)
       ? 'http://localhost:5000/api/v1'
-      : 'https://fph-api.vercel.app/api/v1';
+      : `${location.origin}/api/v1`;
   })();
 
   // ── Token refresh queue (prevents parallel refresh storms) ─

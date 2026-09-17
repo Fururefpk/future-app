@@ -41,3 +41,5 @@ coverage/
 # Temp / uploads (Cloudinary handles storage — don't commit local uploads)
 uploads/
 tmp/
+.vercel
+.env*

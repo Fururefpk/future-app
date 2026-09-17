@@ -76,6 +76,9 @@ router.delete('/invoices/:id', authorize('landlord', 'admin'), ctrl.voidInvoice)
  */
 router.post('/invoices/:id/payments', ctrl.recordPayment);
 
+router.post('/invoices/:id/paystack/initialize', ctrl.initializePaystackPayment);
+router.post('/invoices/:id/paystack/verify', ctrl.verifyPaystackPayment);
+
 /**
  * GET /rent/invoices/:id/payments
  * Payment history for a specific invoice.

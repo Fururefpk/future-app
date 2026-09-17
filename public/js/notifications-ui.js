@@ -52,7 +52,7 @@ window.FPH.notificationsUI = (() => {
         return;
       }
       list.innerHTML = items.map(q => `
-        <div class="notif-item${q.unreadCount?' unread':''}" onclick="FPH.chatUI.openThread('${esc(q._id)}');FPH.notificationsUI.close();">
+        <div class="notif-item${q.unreadCount?' unread':''}" data-action="FPH.notificationsUI.openThreadAndClose" data-value="${esc(q._id)}">
           <div class="notif-item-icon" style="background:${q.unreadCount?'var(--blue-100)':'var(--gray-100)'};color:${q.unreadCount?'var(--primary)':'var(--gray-500)'};">
             ${I('message-square')}
           </div>
@@ -67,6 +67,11 @@ window.FPH.notificationsUI = (() => {
     }
   }
 
+  async function openThreadAndClose(id) {
+    if (typeof FPH.chatUI?.openThread === 'function') FPH.chatUI.openThread(id);
+    close();
+  }
+
   async function markAllRead() {
     try {
       const d     = await FPH.notifications.getAll({ limit: 50 });
@@ -78,5 +83,5 @@ window.FPH.notificationsUI = (() => {
     } catch {}
   }
 
-  return { init, toggle, close, openPanel, updateBadge, markAllRead };
+  return { init, toggle, close, openPanel, openThreadAndClose, updateBadge, markAllRead };
 })();

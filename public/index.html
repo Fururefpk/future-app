@@ -25,8 +25,8 @@
       <h2 class="auth-title" id="authTitle">Sign in to your account</h2>
       <p class="auth-subtitle" id="authSubtitle">Welcome back. Enter your credentials to continue.</p>
       <div class="auth-tabs">
-        <button class="auth-tab active" id="loginTab" onclick="switchAuthTab('login')">Sign In</button>
-        <button class="auth-tab" id="registerTab" onclick="switchAuthTab('register')">Create Account</button>
+        <button class="auth-tab active" id="loginTab" data-action="switchAuthTab" data-value="login">Sign In</button>
+        <button class="auth-tab" id="registerTab" data-action="switchAuthTab" data-value="register">Create Account</button>
       </div>
     </div>
 
@@ -43,17 +43,17 @@
           <div class="form-error" id="loginPasswordErr"></div>
         </div>
         <div style="text-align:right;margin-top:-12px;margin-bottom:20px;">
-          <a href="#" onclick="FPH.app.showForgotPassword();return false;" style="font-size:13px;">Forgot password?</a>
+          <a href="#" data-action="FPH.app.showForgotPassword" style="font-size:13px;">Forgot password?</a>
         </div>
-        <button class="btn btn-primary btn-full" id="loginBtn" onclick="handleLogin()">Sign In</button>
+        <button class="btn btn-primary btn-full" id="loginBtn" data-action="handleLogin">Sign In</button>
         <div class="auth-divider">or continue with</div>
-        <button class="social-btn" onclick="handlePasskeyLogin()" id="passkeyBtn">
+        <button class="social-btn" data-action="handlePasskeyLogin" id="passkeyBtn">
           <span id="passkeyBtnIcon"></span> Sign in with Passkey
         </button>
-        <button class="social-btn" onclick="openFaceAuth()">
+        <button class="social-btn" data-action="openFaceAuth">
           <span id="faceLoginIcon"></span> Face Recognition
         </button>
-        <button class="social-btn" onclick="handleSocialLogin('google')">
+        <button class="social-btn" data-action="handleSocialLogin" data-value="google">
           <span id="googleIcon"></span> Continue with Google
         </button>
         <p class="auth-terms">By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
@@ -97,7 +97,7 @@
           <input type="password" class="form-control" id="registerPassword" placeholder="Minimum 8 characters" autocomplete="new-password" required>
           <div class="form-error" id="registerPasswordErr"></div>
         </div>
-        <button class="btn btn-primary btn-full" id="registerBtn" onclick="handleRegister()">Create Account</button>
+        <button class="btn btn-primary btn-full" id="registerBtn" data-action="handleRegister">Create Account</button>
         <p class="auth-terms">By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>. Identity verification (Ghana Card &amp; face) can be completed from Settings after sign-up.</p>
       </div>
     </div>
@@ -118,6 +118,7 @@
 <script src="js/verification.js"></script>
 <script src="js/biometric.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/analytics.js"></script>
 <script src="js/app.js"></script>
 <script src="js/camera-ui.js"></script>
 <script src="js/face-auth-ui.js"></script>
@@ -139,16 +140,60 @@
 <script src="js/utils-ui-helpers.js"></script>
 
 <script>
-function openAuth(tab)    { FPH.app.openAuth(tab); }
-function switchAuthTab(t) { FPH.app.switchAuthTab(t); }
-function handleLogin()    { FPH.app.handleLogin(); }
-function handleRegister() { FPH.app.handleRegister(); }
-function handleLogout()   { FPH.app.handleLogout(); }
-function handlePasskeyLogin()  { FPH.app.handlePasskeyLogin(); }
-function handleSocialLogin(p)  { FPH.socialLogin.redirect(p); }
-function openFaceAuth()        { if(FPH.cameraUI) FPH.cameraUI.open('auth'); }
-function closeFaceModal()      { if(FPH.cameraUI) FPH.cameraUI.close(); }
-function captureFace()         { if(FPH.cameraUI) FPH.cameraUI.capture(); }
+function resolveActionPath(path) {
+  return path.split('.').reduce((obj, key) => (obj && obj[key] !== undefined ? obj[key] : undefined), window);
+}
+function openAuth(tab)    { if (window.FPH?.app?.openAuth) window.FPH.app.openAuth(tab); }
+function switchAuthTab(t) { if (window.FPH?.app?.switchAuthTab) window.FPH.app.switchAuthTab(t); }
+function handleLogin()    { if (window.FPH?.app?.handleLogin) return window.FPH.app.handleLogin(); }
+function handleRegister() { if (window.FPH?.app?.handleRegister) return window.FPH.app.handleRegister(); }
+function handleLogout()   { if (window.FPH?.app?.handleLogout) return window.FPH.app.handleLogout(); }
+function handlePasskeyLogin()  { if (window.FPH?.app?.handlePasskeyLogin) return window.FPH.app.handlePasskeyLogin(); }
+function handleSocialLogin(p)  { if (window.FPH?.socialLogin?.redirect) return window.FPH.socialLogin.redirect(p); }
+function openFaceAuth()        { if (window.FPH?.cameraUI) window.FPH.cameraUI.open('auth'); }
+function closeFaceModal()      { if (window.FPH?.cameraUI) window.FPH.cameraUI.close(); }
+function captureFace()         { if (window.FPH?.cameraUI) window.FPH.cameraUI.capture(); }
+
+document.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-action]');
+  if (!trigger) return;
+  const fn = resolveActionPath(trigger.dataset.action);
+  if (typeof fn !== 'function') return;
+  const args = [];
+  if (trigger.dataset.value !== undefined) args.push(trigger.dataset.value);
+  if (trigger.dataset.id !== undefined) args.push(trigger.dataset.id);
+  if (trigger.dataset.name !== undefined) args.push(trigger.dataset.name);
+  if (trigger.dataset.target !== undefined) args.push(trigger.dataset.target);
+  if (trigger.dataset.requiresElement === 'true') {
+    fn(trigger, ...args);
+  } else {
+    fn(...args);
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const trigger = event.target.closest('[data-action-change]');
+  if (!trigger) return;
+  const fn = resolveActionPath(trigger.dataset.actionChange);
+  if (typeof fn !== 'function') return;
+  const args = [event.target.value];
+  if (trigger.dataset.requiresElement === 'true') {
+    fn(trigger, ...args);
+  } else {
+    fn(...args);
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  const trigger = event.target.closest('[data-action-keydown]');
+  if (!trigger || event.key !== 'Enter' || event.shiftKey) return;
+  const fn = resolveActionPath(trigger.dataset.actionKeydown);
+  if (typeof fn !== 'function') return;
+  const args = [];
+  if (trigger.dataset.value !== undefined) args.push(trigger.dataset.value);
+  event.preventDefault();
+  fn(...args);
+});
 </script>
 
 </body>

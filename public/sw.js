@@ -4,7 +4,7 @@
  */
 'use strict';
 
-const CACHE_NAME    = 'fph-v1';
+const CACHE_NAME    = 'fph-v2';
 const API_CACHE     = 'fph-api-v1';
 const OFFLINE_PAGE  = '/404.html';
 

@@ -41,8 +41,9 @@ window.FPH.dashboardUIHelpers = (() => {
     return `<span class="badge badge-${cls}">${esc(cap(status?.replace('_', ' ') || ''))}</span>`;
   }
 
-  function actionBtn(label, onclick, type = 'outline') {
-    return `<button class="btn btn-${type} btn-sm" onclick="${onclick}">${label}</button>`;
+  function actionBtn(label, fnPath, type = 'outline') {
+    const fn = fnPath || 'FPH.dashboardUI.goTo';
+    return `<button class="btn btn-${type} btn-sm" data-action="${fn}">${label}</button>`;
   }
 
   function panelHeader(title, subtitle = '', actions = '') {
@@ -62,7 +63,7 @@ window.FPH.dashboardUIHelpers = (() => {
     }
     return `<div class="banner banner-warning">
       <div class="banner-content">${I('alert-triangle')} Your identity is not yet verified. Some features are restricted until verification is complete.</div>
-      <button class="btn btn-warning btn-sm" onclick="FPH.dashboardUI.goTo('settings')">Verify Now</button>
+      <button class="btn btn-warning btn-sm" data-action="FPH.dashboardUI.goTo" data-value="settings">Verify Now</button>
     </div>`;
   }
 
@@ -110,7 +111,7 @@ window.FPH.dashboardUIHelpers = (() => {
         </div>
         <div class="card">
           <div class="card-header"><h3>Recent Listings</h3>
-            <button class="btn btn-outline btn-sm" onclick="FPH.dashboardUI.goTo('properties')">View All</button>
+            <button class="btn btn-outline btn-sm" data-action="FPH.dashboardUI.goTo" data-value="properties">View All</button>
           </div>
           <div class="card-body" style="padding:0;">
             ${props.length
@@ -141,16 +142,16 @@ window.FPH.dashboardUIHelpers = (() => {
       </div>
       ${overdue.length ? `<div class="alert alert-danger">${I('alert-triangle')}
         <div><div class="alert-title">Overdue Invoices</div>You have ${overdue.length} overdue invoice${overdue.length>1?'s':''} totalling ${ghs(overdue.reduce((s,i)=>s+(i.amount||0),0))}.
-        <a href="#" onclick="FPH.dashboardUI.goTo('rent');return false;" style="font-weight:600;">View and pay now</a></div></div>` : ''}
+        <a href="#" data-action="FPH.dashboardUI.goTo" data-value="rent" style="font-weight:600;">View and pay now</a></div></div>` : ''}
       ${tenancies.length ? `<div class="card" style="margin-top:16px;">
-        <div class="card-header"><h3>Recent Tenancies</h3><button class="btn btn-outline btn-sm" onclick="FPH.dashboardUI.goTo('tenancies')">View All</button></div>
+        <div class="card-header"><h3>Recent Tenancies</h3><button class="btn btn-outline btn-sm" data-action="FPH.dashboardUI.goTo" data-value="tenancies">View All</button></div>
         <div class="card-body" style="padding:0;"><table class="data-table">
           <thead><tr><th>Property</th><th>Status</th><th>Since</th><th></th></tr></thead>
           <tbody>${tenancies.slice(0,5).map(t => `<tr>
             <td><div style="font-weight:500;">${esc(t.property?.name||'Property')}</div><div style="font-size:12px;color:var(--gray-500);">${esc(t.property?.city||'')}</div></td>
             <td>${statusBadge(t.status)}</td>
             <td style="color:var(--gray-500);font-size:13px;">${dt(t.createdAt)}</td>
-            <td>${t.status==='active'?actionBtn('Maintenance','FPH.dashboardUI.goTo(\'maintenance\')'):''}
+            <td>${t.status==='active'?actionBtn('Maintenance','FPH.dashboardUI.goTo'):''}
             </td></tr>`).join('')}</tbody>
         </table></div></div>` : ''}`;
   }
@@ -172,7 +173,7 @@ window.FPH.dashboardUIHelpers = (() => {
       ${tenancies.filter(t=>t.status==='pending').length ? `<div class="alert alert-warning">${I('alert-triangle')}
         <div><div class="alert-title">Pending Tenancy Requests</div>
         You have ${tenancies.filter(t=>t.status==='pending').length} tenancy request${tenancies.filter(t=>t.status==='pending').length>1?'s':''} awaiting your decision.
-        <a href="#" onclick="FPH.dashboardUI.goTo('tenancies');return false;" style="font-weight:600;"> Review now</a></div></div>` : ''}`;
+        <a href="#" data-action="FPH.dashboardUI.goTo" data-value="tenancies" style="font-weight:600;"> Review now</a></div></div>` : ''}`;
   }
 
   /* ── Listings panel ────────────────────────────────────── */
@@ -180,10 +181,10 @@ window.FPH.dashboardUIHelpers = (() => {
     const listings = data?.data?.properties || [];
     return `
       ${panelHeader('My Listings','Manage your property listings',
-        `<button class="btn btn-primary btn-sm" onclick="FPH.propertiesUI.openCreateModal()">${I('plus')} New Listing</button>`)}
+        `<button class="btn btn-primary btn-sm" data-action="FPH.propertiesUI.openCreateModal">${I('plus')} New Listing</button>`)}
       ${listings.length === 0
         ? emptyState('building','No Listings Yet','You have not added any property listings.',
-            `<button class="btn btn-primary" onclick="FPH.propertiesUI.openCreateModal()">${I('plus')} Add Your First Listing</button>`)
+            `<button class="btn btn-primary" data-action="FPH.propertiesUI.openCreateModal">${I('plus')} Add Your First Listing</button>`)
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th>Property</th><th>City</th><th>Price</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
             <tbody>${listings.map(p => `<tr>
@@ -193,8 +194,8 @@ window.FPH.dashboardUIHelpers = (() => {
               <td>${statusBadge(p.status)}</td>
               <td style="color:var(--gray-500);font-size:13px;">${dt(p.createdAt)}</td>
               <td><div class="table-actions">
-                ${actionBtn('Edit',   `FPH.propertiesUI.openEditModal('${esc(p._id)}')`)}
-                ${actionBtn('Delete', `FPH.propertiesUI.confirmDelete('${esc(p._id)}','${esc(p.name||'')}')`, 'danger')}
+                ${actionBtn('Edit',   'FPH.propertiesUI.openEditModal', 'outline')}
+                ${actionBtn('Delete', 'FPH.propertiesUI.confirmDelete', 'danger')}
               </div></td>
             </tr>`).join('')}</tbody>
           </table></div>`}`;
@@ -245,7 +246,7 @@ window.FPH.dashboardUIHelpers = (() => {
     return `
       ${panelHeader('Rent & Invoices','Manage invoices and payment records',
         role==='landlord'||role==='admin'
-          ? `<button class="btn btn-primary btn-sm" onclick="FPH.rentUI.openGenerateModal()">${I('plus')} Generate Invoice</button>`
+          ? `<button class="btn btn-primary btn-sm" data-action="FPH.rentUI.openGenerateModal">${I('plus')} Generate Invoice</button>`
           : '')}
       ${overdue.length ? `<div class="alert alert-danger">${I('alert-triangle')}<div>
         <div class="alert-title">${overdue.length} Overdue Invoice${overdue.length>1?'s':''}</div>
@@ -263,6 +264,9 @@ window.FPH.dashboardUIHelpers = (() => {
                 <td style="color:${inv.status==='overdue'?'var(--danger)':'var(--gray-700)'};">${dt(inv.dueDate)}</td>
                 <td>${statusBadge(inv.status)}</td>
                 <td><div class="table-actions">
+                  ${role==='tenant'&&inv.status!=='paid'&&inv.status!=='voided'
+                    ? actionBtn('Pay with Paystack',`FPH.rentUI.startPaystack('${id}')`, 'primary')
+                    : ''}
                   ${inv.status!=='paid'&&inv.status!=='voided'
                     ? actionBtn('Record Payment',`FPH.rentUI.openPayModal('${id}')`, 'secondary')
                     : ''}

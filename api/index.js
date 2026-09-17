@@ -14,10 +14,17 @@ process.env.SERVERLESS = '1';
 const { connectDB } = require('../config/database');
 const app = require('../server');
 
-// Kick off the DB connection immediately so it's ready for the first request.
-// connectDB() is idempotent — safe to call multiple times.
-connectDB().catch((err) => {
-  console.error('Vercel cold-start DB connection failed:', err.message);
-});
-
-module.exports = app;
+// Wait for the database before handling a request so cold starts cannot race
+// queries against a connection that is still being established.
+module.exports = async (req, res) => {
+  try {
+    await connectDB();
+    return app(req, res);
+  } catch (err) {
+    console.error('Vercel database connection failed:', err.message);
+    return res.status(503).json({
+      success: false,
+      message: 'Database temporarily unavailable',
+    });
+  }
+};
