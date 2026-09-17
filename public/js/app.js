@@ -50,6 +50,22 @@ window.FPH.app = (() => {
     window.addEventListener('fph:logout', showLanding);
   }
 
+  function showStartupError(error) {
+    console.error('Application startup failed:', error);
+    const dashboard = document.getElementById('dashboard');
+    const panel = document.getElementById('dashPanel');
+    if (dashboard) {
+      dashboard.classList.add('active');
+      dashboard.style.display = 'block';
+    }
+    if (panel) {
+      panel.innerHTML = `<div class="alert alert-danger">
+        ${I('alert-circle')} <span>We could not open your dashboard. Please return to sign in and try again.</span>
+        <a class="btn btn-outline btn-sm" style="margin-left:12px;" href="/">Back to sign in</a>
+      </div>`;
+    }
+  }
+
   function _injectIcons() {
     const map = {
       navBrandIcon:    'building',   authLogoIcon:    'building',
@@ -464,7 +480,9 @@ window.FPH.app = (() => {
   }
 
   /* ── Global namespace for HTML onclick ───────────────── */
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init().catch(showStartupError);
+  });
 
   return {
     init, showLanding, openAuth, closeAuth, switchAuthTab,

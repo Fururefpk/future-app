@@ -18,6 +18,20 @@
 </head>
 <body>
 
+<script>
+// Keep this guard independent of the application bundle. It prevents a blank
+// dashboard if a visitor opens this protected page without a valid session.
+(function () {
+  try {
+    const session = JSON.parse(localStorage.getItem('fph_session') || 'null');
+    if (!session?.accessToken || !session?.user) window.location.replace('/');
+  } catch (_) {
+    localStorage.removeItem('fph_session');
+    window.location.replace('/');
+  }
+})();
+</script>
+
 <!-- HEADER (authenticated) -->
 <header id="header" class="visible">
   <div class="header-inner">
