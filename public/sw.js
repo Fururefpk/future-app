@@ -6,7 +6,7 @@
 
 // Bump this whenever the application shell changes so previously installed
 // workers cannot combine an old page or script with a new deployment.
-const CACHE_NAME    = 'fph-v3';
+const CACHE_NAME    = 'fph-v4';
 const API_CACHE     = 'fph-api-v1';
 const OFFLINE_PAGE  = '/404.html';
 
@@ -62,6 +62,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never serve a cached HTML route while online. This prevents a route that
+  // was corrected in a new deployment from being masked by an older shell.
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request, CACHE_NAME));
+    return;
+  }
+
   // Static assets → Cache-first
   event.respondWith(cacheFirst(request));
 });
@@ -88,11 +95,11 @@ async function cacheFirst(request) {
 }
 
 // ── Network-first strategy ────────────────────────────────────
-async function networkFirst(request) {
+async function networkFirst(request, cacheName = API_CACHE) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(API_CACHE);
+      const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
     return response;
